@@ -83,7 +83,7 @@ Key implementation notes:
 DATABASE_URL=              # Supabase or Convex
 AUTH_SECRET=               # Clerk or Supabase Auth
 LEMON_SQUEEZY_API_KEY=     # or PADDLE_API_KEY (merchant of record, India -> global)
-ANTHROPIC_API_KEY=         # or OPENAI_API_KEY
+GROQ_API_KEY=              # free tier for v1; provider lives only in lib/llm.ts
 TREND_SOURCE_API_KEY=      # EnsembleData / Apify / Data365
 REMOTION_AWS_ACCESS_KEY_ID=      # only if rendering on Lambda
 REMOTION_AWS_SECRET_ACCESS_KEY=

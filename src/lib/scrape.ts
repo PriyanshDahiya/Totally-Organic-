@@ -19,7 +19,9 @@ export type ScrapedSite = {
   products: ScrapedProduct[];
 };
 
-const MAX_TEXT_CHARS = 40_000; // page copy sent to the LLM; a homepage rarely comes close
+// Page copy sent to the LLM. ~3k tokens: Groq's free tier caps a minute at
+// 8k tokens (input + output), and the top of a homepage says the most anyway.
+const MAX_TEXT_CHARS = 12_000;
 const FETCH_TIMEOUT_MS = 10_000;
 
 function isPrivateAddress(ip: string) {

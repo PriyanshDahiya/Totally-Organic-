@@ -1,7 +1,6 @@
 import "server-only";
-import Anthropic from "@anthropic-ai/sdk";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod";
+import { generateObject } from "./llm";
 import type { ScrapedSite } from "./scrape";
 
 export const BrandProfileSchema = z.object({
@@ -45,22 +44,16 @@ Base every field on the website content you are given. Where you have to infer (
 Angles are pain points or everyday moments a customer would recognize, written for relatable meme-style posts on Instagram and TikTok, not polished ad copy.
 Tone rules should be concrete enough for a copywriter to follow.`;
 
-const client = new Anthropic();
-
 export async function generateBrandProfile(site: ScrapedSite): Promise<BrandProfile> {
   const products = site.products
-    .map((p) => `- ${p.name}${p.price ? ` (${p.price})` : ""}: ${p.description?.slice(0, 600) ?? ""}`)
+    .map((p) => `- ${p.name}${p.price ? ` (${p.price})` : ""}: ${p.description?.slice(0, 300) ?? ""}`)
     .join("\n");
 
-  const response = await client.messages.parse({
-    model: "claude-opus-5",
-    max_tokens: 16000,
-    output_config: { effort: "medium", format: zodOutputFormat(BrandProfileSchema) },
+  return generateObject({
+    name: "brand_profile",
+    schema: BrandProfileSchema,
     system: SYSTEM_PROMPT,
-    messages: [
-      {
-        role: "user",
-        content: `Website: ${site.url}
+    prompt: `Website: ${site.url}
 Title: ${site.title}
 Meta description: ${site.metaDescription}
 
@@ -69,11 +62,5 @@ ${products}
 
 Page text:
 ${site.text}`,
-      },
-    ],
   });
-
-  if (response.stop_reason === "refusal") throw new Error("The model declined to profile this website.");
-  if (!response.parsed_output) throw new Error("Couldn't build a brand profile from that website. Try again.");
-  return response.parsed_output;
 }
