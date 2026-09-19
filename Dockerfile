@@ -13,9 +13,6 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY . .
-# Public values are inlined into the browser bundle at build time.
-ARG NEXT_PUBLIC_SUPABASE_URL
-ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build && node -e "require('@remotion/renderer').ensureBrowser()"
 
