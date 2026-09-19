@@ -4,6 +4,7 @@ import { remixHook, type Format, type Remix } from "./hooks";
 import { findBackgroundClip, type StockClip } from "./stock";
 import { pickMusic } from "./music";
 import { generateScenes } from "./scenes";
+import { suggestAudio } from "./audio";
 import { findFaces, placeAroundFaces, type FaceBand } from "./faces";
 import { productCutouts, type Cutout } from "./cutout";
 import {
@@ -313,6 +314,10 @@ export async function generateCard(brandId: string, opts: { format?: Format } = 
         why: remix.why,
         background,
         style,
+        suggested_audio: await suggestAudio(profile.niche_tags ?? [], remix.emotion).catch((err) => {
+          console.error("audio suggestion failed", err);
+          return null;
+        }),
         completed_at: new Date().toISOString(),
       })
       .eq("id", job.id);

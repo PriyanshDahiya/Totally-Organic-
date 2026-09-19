@@ -208,8 +208,21 @@ function CardView({
 // "Why it works" plus the collapsible ingredients list, shared by the swipe
 // deck and the approved grid.
 export function CardDetails({ card }: { card: DoneCard }) {
+  const audio = card.suggestedAudio;
   return (
     <>
+      {audio && (
+        <p className="flex flex-wrap items-baseline gap-x-2 text-sm">
+          <span className="font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-ink-soft">Trending audio</span>
+          <span className="font-semibold">
+            {audio.title}
+            {audio.artist && <span className="font-normal text-ink-soft"> · {audio.artist}</span>}
+          </span>
+          <a href={audio.url} target="_blank" rel="noreferrer" className="font-semibold text-leaf underline decoration-2 underline-offset-2">
+            Open in Instagram ↗
+          </a>
+        </p>
+      )}
       {card.why && (
         <p className="border-l-4 border-yolk pl-3 text-sm leading-relaxed">
           <span className="font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-ink-soft">Why it works </span>
@@ -387,11 +400,48 @@ function Status({ card, acting, onApprove, onReject, onEdit }: {
     return (
       <div className="flex items-center justify-between gap-3 rounded-xl border-2 border-leaf bg-leaf-wash px-4 py-2.5">
         <p className="text-sm font-semibold text-leaf-deep">Rendered and ready to post</p>
-        <a href={card.videoUrl} download className="text-sm font-semibold underline decoration-2 underline-offset-4">
-          Download MP4
-        </a>
+        <div className="flex shrink-0 items-center gap-3">
+          <ShareButton card={card} />
+          <a href={card.videoUrl} download className="text-sm font-semibold underline decoration-2 underline-offset-4">
+            Download MP4
+          </a>
+        </div>
       </div>
     );
   }
   return null;
+}
+
+// On phones: hands the MP4 to the share sheet (pick Instagram → Reels), with
+// the caption copied so it can be pasted. Add the suggested audio there.
+// Hidden where the browser can't share files (most desktops).
+export function ShareButton({ card }: { card: DoneCard }) {
+  const [state, setState] = useState<"idle" | "busy" | "copied">("idle");
+  const [supported, setSupported] = useState(false);
+  useEffect(() => {
+    const probe = new File([""], "post.mp4", { type: "video/mp4" });
+    // Checked after mount: navigator doesn't exist during server rendering.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSupported(typeof navigator.canShare === "function" && navigator.canShare({ files: [probe] }));
+  }, []);
+  if (!supported || !card.videoUrl) return null;
+
+  const share = async () => {
+    setState("busy");
+    try {
+      await navigator.clipboard.writeText(card.caption).catch(() => undefined);
+      const blob = await (await fetch(card.videoUrl!)).blob();
+      const file = new File([blob], "post.mp4", { type: "video/mp4" });
+      await navigator.share({ files: [file], text: card.caption });
+      setState("copied");
+    } catch {
+      setState("idle");
+    }
+  };
+  return (
+    <button type="button" onClick={share} disabled={state === "busy"}
+      className="rounded-lg border-2 border-ink bg-card px-2.5 py-1 text-sm font-semibold">
+      {state === "busy" ? "Preparing…" : state === "copied" ? "Caption copied ✓" : "Share to Instagram"}
+    </button>
+  );
 }

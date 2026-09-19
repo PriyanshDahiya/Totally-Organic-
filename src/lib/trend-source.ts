@@ -6,9 +6,18 @@ import "server-only";
 // Apify's Instagram Hashtag Scraper, run synchronously:
 // https://apify.com/apify/instagram-hashtag-scraper (input: hashtags,
 // resultsType "reels", resultsLimit; output fields per item include url,
-// type, caption, timestamp, videoPlayCount / videoViewCount, likesCount).
+// type, caption, timestamp, videoPlayCount / videoViewCount, likesCount,
+// musicInfo { audio_id, song_name, artist_name, uses_original_audio }).
 // Pay per result (~$1.90 per 1,000 at the time of writing).
 // https://docs.apify.com/api/v2/act-run-sync-get-dataset-items-post
+
+export type TrendAudio = {
+  id: string;
+  title: string;
+  artist: string | null;
+  // The creator's own sound rather than a song from Instagram's library.
+  isOriginal: boolean;
+};
 
 export type TrendPost = {
   url: string;
@@ -16,6 +25,8 @@ export type TrendPost = {
   views: number | null;
   likes: number | null;
   postedAt: string | null;
+  // Null when the provider doesn't say, or Instagram muted the audio.
+  audio: TrendAudio | null;
 };
 
 export interface TrendSource {
@@ -32,6 +43,13 @@ type ApifyReel = {
   videoPlayCount?: number;
   videoViewCount?: number;
   likesCount?: number;
+  musicInfo?: {
+    audio_id?: string;
+    song_name?: string;
+    artist_name?: string;
+    uses_original_audio?: boolean;
+    should_mute_audio?: boolean;
+  };
 };
 
 class ApifySource implements TrendSource {
@@ -59,6 +77,15 @@ class ApifySource implements TrendSource {
         views: i.videoPlayCount ?? i.videoViewCount ?? null,
         likes: i.likesCount ?? null,
         postedAt: i.timestamp ?? null,
+        audio:
+          i.musicInfo?.audio_id && !i.musicInfo.should_mute_audio
+            ? {
+                id: i.musicInfo.audio_id,
+                title: i.musicInfo.song_name || "Original audio",
+                artist: i.musicInfo.artist_name || null,
+                isOriginal: !!i.musicInfo.uses_original_audio,
+              }
+            : null,
       }));
   }
 }

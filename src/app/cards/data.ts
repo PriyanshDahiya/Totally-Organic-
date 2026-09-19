@@ -1,6 +1,7 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { StockClip } from "@/lib/stock";
+import type { SuggestedAudio } from "@/lib/audio";
 import { withStyleDefaults, type CardStyle } from "@/remotion/style";
 
 export type ReviewStatus = "pending" | "approved" | "rejected";
@@ -25,6 +26,8 @@ export type PreviewCard =
       reviewStatus: ReviewStatus;
       renderStatus: RenderStatus;
       videoUrl: string | null;
+      // A trending Instagram audio to add when posting.
+      suggestedAudio: SuggestedAudio | null;
     }
   | { status: "pending"; jobId: string }
   | { status: "failed"; jobId: string | null; error: string };
@@ -43,6 +46,7 @@ type JobRow = {
   why: string | null;
   background: StockClip | null;
   style: Partial<CardStyle> | null;
+  suggested_audio: SuggestedAudio | null;
   requested_at: string;
   trending_clips: { hook_text: string } | null;
   products: { name: string; image_urls: string[] } | null;
@@ -79,11 +83,12 @@ export function toPreviewCard(job: JobRow): PreviewCard {
     reviewStatus: job.video_assets[0]?.review_status ?? "pending",
     renderStatus: job.video_assets[0]?.render_status ?? "preview",
     videoUrl: job.video_assets[0]?.video_url ?? null,
+    suggestedAudio: job.suggested_audio,
   };
 }
 
 export const CARD_SELECT =
-  "id, status, format, angle, overlay_text, why, background, style, requested_at, trending_clips(hook_text), products(name, image_urls), video_assets(id, caption_text, review_status, render_status, video_url)";
+  "id, status, format, angle, overlay_text, why, background, style, suggested_audio, requested_at, trending_clips(hook_text), products(name, image_urls), video_assets(id, caption_text, review_status, render_status, video_url)";
 
 export async function loadCards(brandId: string): Promise<PreviewCard[]> {
   const { data, error } = await createAdminClient()

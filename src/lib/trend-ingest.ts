@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createAdminClient } from "./supabase/admin";
 import { generateObject } from "./llm";
 import { trendSource, type TrendPost } from "./trend-source";
+import { storeTrendingAudios, trendingAudiosFrom } from "./audio";
 
 // Weekly job: pull top Reels for each niche, turn their opening lines into
 // reusable hook structures, and store them as TrendingClips. We keep the
@@ -104,6 +105,10 @@ export async function ingestTrends(): Promise<{ inserted: number; tags: string[]
     const posts = (
       await Promise.all(hashtags.map((h) => source.reelsForHashtag(h, REELS_PER_TAG).catch(() => [] as TrendPost[])))
     ).flat();
+    // The sounds these Reels use, for per-card audio suggestions. Best effort.
+    await trendingAudiosFrom(posts, tag)
+      .then(storeTrendingAudios)
+      .catch((err) => console.error(`audio extraction failed for ${tag}`, err));
     const hooks = await hooksFrom(posts, HOOKS_PER_TAG).catch((err) => {
       console.error(`hook extraction failed for ${tag}`, err);
       return [];
