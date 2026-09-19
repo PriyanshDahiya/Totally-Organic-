@@ -186,6 +186,10 @@ export async function searchClips(query: string, limit = 12): Promise<StockClip[
 // by Pexels' image CDN to 9:16 at render size.
 type PexelsPhoto = { id: number; url: string; alt: string; photographer: string; photographer_url: string; src: { original: string } };
 
+// Meme backdrops set the scene; the meme is the only person in the frame.
+const PEOPLE =
+  /\b(person|people|man|men|woman|women|girl|boy|guy|lady|child|kid|couple|family|friends|crowd|worker|workers|businessman|businesswoman|student|model|portrait|selfie|face|hands?|someone|user|athlete|chef|doctor)\b/;
+
 export type StockPhoto = { url: string; credit: { name: string; url: string; pexelsUrl: string } };
 
 export async function findBackgroundPhoto(query: string, avoid: Set<string> = new Set()): Promise<StockPhoto | null> {
@@ -194,7 +198,10 @@ export async function findBackgroundPhoto(query: string, avoid: Set<string> = ne
   const res = await fetch(url, { headers: { Authorization: process.env.PEXELS_API_KEY! }, signal: AbortSignal.timeout(10_000) });
   if (!res.ok) throw new Error(`Pexels photo search failed (${res.status}).`);
   const { photos } = (await res.json()) as { photos: PexelsPhoto[] };
-  const usable = photos.filter((p) => !avoid.has(p.url) && !SENSITIVE.test(`${p.alt} ${p.url}`.toLowerCase()));
+  const usable = photos.filter((p) => {
+    const text = `${p.alt} ${p.url}`.toLowerCase();
+    return !avoid.has(p.url) && !SENSITIVE.test(text) && !PEOPLE.test(text);
+  });
   if (usable.length === 0) return null;
   const p = usable[Math.floor(Math.random() * Math.min(5, usable.length))];
   return {

@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { generateObject } from "./llm";
+import { memeById } from "./memes";
 import type { BrandProfile } from "./brand-profile";
 import type { Culture } from "./voice";
 import type { Moment } from "./moments";
@@ -74,7 +75,7 @@ const RemixSchema = z.object({
     .describe("Two short sentences for the founder: why the moment hits emotionally, then how the post positions the product as the fix"),
   scene: z
     .string()
-    .describe("Meme format only: a short stock-photo search for the backdrop that sets the joke's scene, e.g. 'messy desk laptop night' or 'office meeting room'. Empty for other formats."),
+    .describe("Meme format only: a short stock-photo search for the backdrop: the PLACE or OBJECTS where the joke happens, with no people in it, e.g. 'messy desk laptop night', 'empty office meeting room', 'invoice papers on table'. Empty for other formats."),
   meme_id: z
     .number()
     .describe("Meme format only: the id of the reaction meme from the list that lands the punchline. 0 for other formats."),
@@ -176,7 +177,7 @@ function formatBrief(input: RemixInput) {
   if (hook.format === "slideshow") return "Slideshow (text over product photos, one line per slide)";
   return `Meme (a short setup on screen, then a famous reaction meme plays underneath as the punchline).
 Write only the setup: 1-2 short lines, under 150 characters, that make the meme's reaction land. Keep the hook's structure; the meme is the reaction to the moment you describe. Don't repeat or describe the meme's own line.
-Pick meme_id from this list:
+Pick meme_id from this list. A meme everyone recognises makes the post travel, so prefer high popularity when two memes fit; never force a popular meme that doesn't match the moment.
 ${input.memeMenu ?? ""}`;
 }
 
@@ -234,14 +235,19 @@ ${styleBrief(input)}`;
     name: "hook_judge",
     schema: JudgeSchema,
     system:
-      "You're a sharp social media editor for small D2C brands. You score draft Reels for the brand's target customer and pick the one most likely to be watched, shared and remembered with the brand. Be strict: generic statements and marketing language score low.",
+      "You're a sharp social media editor for small D2C brands. You score draft Reels for the brand's target customer and pick the one most likely to be watched, shared and remembered with the brand. Be strict: generic statements and marketing language score low. For meme drafts, a meme that fits the moment and that everyone recognises (high popularity) is worth more.",
     prompt: `Brand: ${brand.name} — ${brand.one_liner}
 Angle: ${angle.pain_point}
 
 ${drafts
-  .map((d, i) => `Draft ${i + 1}:\n${d.lines.join("\n")}${hook.format === "green_screen" ? `\n[meme: ${d.meme_id}]` : ""}`)
+  .map((d, i) => `Draft ${i + 1}:\n${d.lines.join("\n")}${hook.format === "green_screen" ? `\n[meme: ${memeLabel(d.meme_id)}]` : ""}`)
   .join("\n\n")}`,
   }).catch(() => null);
   const best = judged ? drafts[judged.best - 1] : null;
   return best ?? drafts[0];
+}
+
+function memeLabel(id: number) {
+  const m = memeById(id);
+  return m ? `${m.name}, popularity ${m.popularity}/10` : "none";
 }

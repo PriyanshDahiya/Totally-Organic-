@@ -2,7 +2,7 @@ import "server-only";
 import { createAdminClient } from "./supabase/admin";
 import { remixHook, type Format, type Remix } from "./hooks";
 import { findBackgroundClip, findBackgroundPhoto, type StockClip } from "./stock";
-import { MEMES, memeById, memeMenu, toMemeLayer } from "./memes";
+import { memeById, memeMenu, pickPopularMeme, toMemeLayer } from "./memes";
 import { pickMusic } from "./music";
 import { generateScenes } from "./scenes";
 import { suggestAudio } from "./audio";
@@ -152,7 +152,9 @@ async function pickBackdrop(
     await createAdminClient().from("brands").update({ profile: { ...profile, scenes } }).eq("id", brandId);
   }
   for (const scene of [...scenes].sort(() => Math.random() - 0.5).slice(0, 3)) {
-    const photo = await findBackgroundPhoto(scene);
+    // Brand scenes describe people ("tired man at desk"); keep the place.
+    const place = scene.replace(/\b(a |an |the )?(man|woman|person|guy|girl|boy|people|couple|student|founder)s?\b/gi, "").trim();
+    const photo = await findBackgroundPhoto(`${place} empty`);
     if (photo) return photo;
   }
   return null;
@@ -189,7 +191,7 @@ export async function generateCard(brandId: string, opts: { format?: Format } = 
   const formats: Format[] = [
     "wall_of_text",
     ...(slideshowProducts.length ? (["slideshow"] as const) : []),
-    ...(MEMES.length ? (["green_screen"] as const) : []),
+    "green_screen",
   ];
   const format: Format = opts.format ?? weightedPick(formats, (f) => FORMAT_WEIGHT[f] * prefs.format(f));
   // Memes remix the same hooks as Wall of Text, cut down to a setup line.
@@ -315,9 +317,12 @@ export async function generateCard(brandId: string, opts: { format?: Format } = 
 
     if (format === "green_screen") {
       // The model's pick, or a random meme if it named one we don't have.
-      style.meme = toMemeLayer(memeById(remix.meme_id) ?? pickRandom(MEMES));
+      style.meme = toMemeLayer(memeById(remix.meme_id) ?? pickPopularMeme());
       // The model's scene for this joke, else one of the brand's scenes.
-      style.backdrop = await (remix.scene.trim() ? findBackgroundPhoto(remix.scene) : Promise.resolve(null))
+      // "empty" nudges Pexels toward scenes without people; the alt-text
+      // filter in findBackgroundPhoto drops any that still have them.
+      style.backdrop = await (remix.scene.trim() ? findBackgroundPhoto(`${remix.scene} empty`) : Promise.resolve(null))
+        .then((photo) => photo ?? (remix.scene.trim() ? findBackgroundPhoto(remix.scene) : null))
         .then((photo) => photo ?? pickBackdrop(brandId, profile, angles))
         .catch((err) => {
         console.error("backdrop lookup failed", err);

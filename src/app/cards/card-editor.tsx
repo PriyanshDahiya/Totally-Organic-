@@ -785,7 +785,7 @@ function MemePicker({ current, onPick }: { current: MemeLayer | null; onPick: (m
       <div className="mb-3 flex items-baseline justify-between gap-3">
         <p className={fieldLabel}>Reaction meme {current && <span className="normal-case tracking-normal text-ink-soft">· {current.name}</span>}</p>
       </div>
-      <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search: shocked, again, laugh, stop…"
+      <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search: shocked, again, laugh, stop… (most popular first)"
         className={`${field} mb-3 text-sm`} />
       <ul className="grid max-h-80 grid-cols-3 gap-2 overflow-y-auto pr-1 sm:grid-cols-4">
         {shown.map((m) => (
@@ -796,7 +796,10 @@ function MemePicker({ current, onPick }: { current: MemeLayer | null; onPick: (m
               }`}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={m.poster} alt="" loading="lazy" className="aspect-square w-full object-contain" />
-              <span className="line-clamp-1 w-full rounded bg-card px-1 text-[11px] font-semibold">{m.name}</span>
+              <span className="line-clamp-1 w-full rounded bg-card px-1 text-[11px] font-semibold">
+                {m.popularity >= 8 && "🔥 "}
+                {m.name}
+              </span>
             </button>
           </li>
         ))}
