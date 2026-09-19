@@ -4,8 +4,16 @@ import { remixHook, type Format, type Remix } from "./hooks";
 import { findBackgroundClip, type StockClip } from "./stock";
 import { pickMusic } from "./music";
 import { generateScenes } from "./scenes";
-import { findFaces, placeAroundFaces } from "./faces";
-import { DEFAULT_STYLE, wallOfTextFontSize, type CardStyle, type TextPosition } from "@/remotion/style";
+import { findFaces, placeAroundFaces, type FaceBand } from "./faces";
+import { productCutouts, type Cutout } from "./cutout";
+import {
+  DEFAULT_STYLE,
+  clampProduct,
+  wallOfTextFontSize,
+  type CardStyle,
+  type ProductLayer,
+  type TextPosition,
+} from "@/remotion/style";
 import type { BrandProfile } from "./brand-profile";
 import { voiceOf, type BrandVoice } from "./voice";
 import { pickMoment } from "./moments";
@@ -23,6 +31,9 @@ const TEXT_POSITIONS: TextPosition[] = ["top", "upper", "upper", "center"];
 const SLIDESHOW_SHARE = 0.4;
 // How many customer phrases each card sees (a rotating sample keeps posts varied).
 const PHRASES_PER_CARD = 6;
+// Share of Wall of Text cards that show the product, for brands with a
+// usable cutout: most, so posts sell, but not all, so the feed stays varied.
+const PRODUCT_SHARE = 0.8;
 // Slideshow needs enough photos to fill its slides.
 const MIN_SLIDESHOW_IMAGES = 3;
 // Don't reuse a hook this brand saw in its last N cards.
@@ -50,6 +61,43 @@ export type Card = {
 };
 
 export type { CardStyle } from "@/remotion/style";
+
+export type StoredCutout = Cutout & { productId: string; productName: string };
+
+// Product cutouts are made once per brand and cached on its profile
+// (`productCutouts`); an empty list means "tried, none usable".
+export async function brandCutouts(
+  brandId: string,
+  profile: Record<string, unknown>,
+  products: { id: string; name: string; image_urls: string[] }[],
+): Promise<StoredCutout[]> {
+  const cached = profile.productCutouts as StoredCutout[] | undefined;
+  if (cached) return cached;
+  const cutouts = await productCutouts(products.filter((p) => p.image_urls.length));
+  await createAdminClient()
+    .from("brands")
+    .update({ profile: { ...profile, productCutouts: cutouts } })
+    .eq("id", brandId);
+  return cutouts;
+}
+
+// Where the product goes: lower middle of the frame, on whichever side is
+// clear of faces, sized so it reads as the hero without covering the scene.
+function placeProduct(cutout: StoredCutout, faces: FaceBand[]): ProductLayer {
+  const aspect = cutout.width / cutout.height;
+  // Tall products (bottles, tubes) narrower, wide ones (boxes, packs) wider.
+  const width = aspect < 0.6 ? 0.28 : aspect > 1.2 ? 0.46 : 0.36;
+  const height = (width * 1080) / aspect / 1920;
+  const y = Math.min(0.78 - height / 2, 0.64);
+  const overlap = (x: number) =>
+    faces.reduce((sum, f) => {
+      const w = Math.max(0, Math.min(x + width / 2, f.right) - Math.max(x - width / 2, f.left));
+      const h = Math.max(0, Math.min(y + height / 2, f.bottom) - Math.max(y - height / 2, f.top));
+      return sum + w * h;
+    }, 0);
+  const sides = [0.7, 0.3].sort((a, b) => overlap(a) - overlap(b) || Math.random() - 0.5);
+  return clampProduct({ url: cutout.url, aspect, x: sides[0], y, width });
+}
 
 function pickRandom<T>(items: T[]): T {
   return items[Math.floor(Math.random() * items.length)];
@@ -154,7 +202,20 @@ export async function generateCard(brandId: string, opts: { format?: Format } = 
   const moment = pickMoment(new Date(), voice.culture, giftable);
   const customerPhrases = [...voice.customerPhrases].sort(() => Math.random() - 0.5).slice(0, PHRASES_PER_CARD);
 
-  const product = clip.format === "slideshow" ? pickRandom(slideshowProducts) : null;
+  // Product in the shot (Wall of Text): chosen before writing, so the text
+  // is about the product the video actually shows.
+  let shotCutout: StoredCutout | null = null;
+  if (format === "wall_of_text" && Math.random() < PRODUCT_SHARE) {
+    const cutouts = await brandCutouts(brandId, brand.profile as Record<string, unknown>, products ?? []).catch((err) => {
+      console.error("product cutouts failed", err);
+      return [] as StoredCutout[];
+    });
+    if (cutouts.length) shotCutout = pickRandom(cutouts);
+  }
+  const product =
+    clip.format === "slideshow"
+      ? pickRandom(slideshowProducts)
+      : (shotCutout && (products ?? []).find((p) => p.id === shotCutout!.productId)) || null;
 
   const { data: job, error: jobError } = await supabase
     .from("generation_jobs")
@@ -214,15 +275,25 @@ export async function generateCard(brandId: string, opts: { format?: Format } = 
       textPosition: clip.format === "slideshow" ? "top" : pickRandom(TEXT_POSITIONS),
       music: await pickMusic(),
     };
-    // Smart positioning: keep the text off faces in the footage. Best effort;
-    // a card is never failed over it.
-    if (background?.frames?.length) {
-      style.textBox = await findFaces(background.frames)
-        .then((faces) => placeAroundFaces(faces, remix.lines, wallOfTextFontSize(remix.lines, style)))
-        .catch((err) => {
-          console.error("smart positioning failed", err);
-          return null;
-        });
+    // Faces in the footage, for keeping the text and product off them.
+    // Best effort: a card is never failed over it.
+    const faces: FaceBand[] = background?.frames?.length
+      ? await findFaces(background.frames).catch((err) => {
+          console.error("face detection failed", err);
+          return [];
+        })
+      : [];
+
+    if (shotCutout) style.product = placeProduct(shotCutout, faces);
+
+    // Smart positioning: keep the text off faces and off the product.
+    const obstacles: FaceBand[] = [...faces];
+    if (style.product) {
+      const h = (style.product.width * 1080) / style.product.aspect / 1920;
+      obstacles.push({ top: style.product.y - h / 2, bottom: style.product.y + h / 2, left: 0, right: 1 });
+    }
+    if (obstacles.length) {
+      style.textBox = placeAroundFaces(obstacles, remix.lines, wallOfTextFontSize(remix.lines, style));
     }
 
     // The preview VideoAsset carries the caption; it's rendered for real

@@ -52,6 +52,11 @@ export function SiteHeader() {
               </Link>
             );
           })}
+          <form action="/auth/signout" method="post">
+            <button className="rounded-full border-2 border-transparent px-3 py-1.5 text-ink-soft hover:border-ink hover:text-ink">
+              Sign out
+            </button>
+          </form>
         </nav>
       </div>
     </header>

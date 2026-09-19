@@ -5,8 +5,11 @@ import { Player } from "@remotion/player";
 import { WALL_OF_TEXT, FONT_FAMILIES } from "@/remotion/WallOfText";
 import { playerConfig } from "./composition";
 import {
+  clampProduct,
   clampTextBox,
+  PRODUCT_BOUNDS,
   slideImagesFor,
+  type ProductLayer,
   FONT_OPTIONS,
   POSITION_OPTIONS,
   TEXT_SCALE,
@@ -18,7 +21,16 @@ import { createClient } from "@/lib/supabase/client";
 import type { StockClip } from "@/lib/stock";
 import type { Upload } from "@/lib/edit";
 import { Button, FinePrint, field, fieldLabel } from "@/components/ui";
-import { footageSuggestions, myUploads, requestUpload, saveEdit, searchFootage, smartPosition } from "./actions";
+import {
+  footageSuggestions,
+  myProductCutouts,
+  myUploads,
+  requestUpload,
+  saveEdit,
+  searchFootage,
+  smartPosition,
+} from "./actions";
+import type { StoredCutout } from "@/lib/generate";
 import type { PreviewCard } from "./data";
 
 type DoneCard = Extract<PreviewCard, { status: "done" }>;
@@ -33,6 +45,8 @@ export function CardEditor({ card, onClose, onSaved }: { card: DoneCard; onClose
   // Slideshow photos, in slide order.
   const [slideImages, setSlideImages] = useState<string[]>(slideImagesFor(card.style, card.images));
   const stage = useRef<HTMLDivElement>(null);
+  // The product floating over the footage (Wall of Text only).
+  const [product, setProduct] = useState<ProductLayer | null>(card.style.product ?? null);
   const [background, setBackground] = useState<StockClip | null>(card.background);
   const [saving, setSaving] = useState(false);
   const [placing, setPlacing] = useState(false);
@@ -80,6 +94,7 @@ export function CardEditor({ card, onClose, onSaved }: { card: DoneCard; onClose
       textScale: scale,
       background,
       slideImages: card.format === "slideshow" ? slideImages : null,
+      product: card.format === "wall_of_text" ? product : null,
     });
     setSaving(false);
     if (!result.ok) return setError(result.error);
@@ -107,7 +122,7 @@ export function CardEditor({ card, onClose, onSaved }: { card: DoneCard; onClose
               <Player
                 {...playerConfig(card, {
                   lines: previewLines.length ? previewLines : [" "],
-                  style: { textPosition: position, textBox, music: card.style.music, font, textScale: previewScale, slideImages },
+                  style: { textPosition: position, textBox, music: card.style.music, font, textScale: previewScale, slideImages, product },
                   background,
                 })}
                 compositionWidth={WALL_OF_TEXT.width}
@@ -120,9 +135,12 @@ export function CardEditor({ card, onClose, onSaved }: { card: DoneCard; onClose
                 clickToPlay={false}
                 acknowledgeRemotionLicense
               />
+              {product && <ProductHandle stage={stage} product={product} onChange={setProduct} />}
               <TextDragHandle stage={stage} textBox={textBox} onMove={setTextBox} />
             </div>
-            <FinePrint className="text-center">Drag the text to move it</FinePrint>
+            <FinePrint className="text-center">
+              Drag the text{product ? " or the product; pull the product's corner to resize" : " to move it"}
+            </FinePrint>
           </div>
 
           <div className="space-y-8 p-5 md:overflow-y-auto">
@@ -203,6 +221,8 @@ export function CardEditor({ card, onClose, onSaved }: { card: DoneCard; onClose
                   onChange={(e) => setScale(Number(e.target.value))} className="mt-2 w-full accent-[var(--color-leaf)]" />
               </div>
             </section>
+
+            {card.format === "wall_of_text" && <ProductPicker product={product} onChange={setProduct} />}
 
             {card.format === "slideshow" ? (
               <PhotoPicker gallery={card.images} selected={slideImages} onChange={setSlideImages}
@@ -584,4 +604,162 @@ function clipFromUrl(url: string): Promise<StockClip> {
     v.onerror = () => reject(new Error("unreadable"));
     v.src = url;
   });
+}
+
+// Product layer controls: show or hide, which product, and size. Moving it
+// happens by dragging in the preview.
+function ProductPicker({ product, onChange }: { product: ProductLayer | null; onChange: (p: ProductLayer | null) => void }) {
+  const [cutouts, setCutouts] = useState<StoredCutout[] | null>(null);
+  const lastRef = useRef<ProductLayer | null>(product);
+
+  useEffect(() => {
+    myProductCutouts().then(setCutouts);
+  }, []);
+  useEffect(() => {
+    if (product) lastRef.current = product;
+  }, [product]);
+
+  const use = (c: StoredCutout) =>
+    onChange(
+      clampProduct({
+        url: c.url,
+        aspect: c.width / c.height,
+        // Keep the current spot and size when swapping products.
+        x: product?.x ?? lastRef.current?.x ?? 0.7,
+        y: product?.y ?? lastRef.current?.y ?? 0.62,
+        width: product?.width ?? lastRef.current?.width ?? 0.36,
+      }),
+    );
+
+  return (
+    <section>
+      <div className="mb-3 flex items-baseline justify-between gap-3">
+        <p className={fieldLabel}>Product in the shot</p>
+        {product && (
+          <button type="button" onClick={() => onChange(null)} className="text-xs font-semibold text-ink-soft underline underline-offset-4">
+            Hide product
+          </button>
+        )}
+      </div>
+      {cutouts === null ? (
+        <p className="text-sm text-ink-soft">Loading your products…</p>
+      ) : cutouts.length === 0 ? (
+        <p className="text-sm text-ink-soft">
+          None of your product photos has a plain background to cut out. Clean packshots on white work best.
+        </p>
+      ) : (
+        <>
+          <ul className="flex flex-wrap gap-2">
+            {cutouts.map((c) => (
+              <li key={c.url}>
+                <button type="button" onClick={() => use(c)} aria-pressed={product?.url === c.url} title={c.productName}
+                  className={`grid size-20 place-items-center rounded-xl border-2 bg-[repeating-conic-gradient(#e8dcc7_0_25%,#fbf8f2_0_50%)] bg-[length:14px_14px] p-1.5 ${
+                    product?.url === c.url ? "border-leaf ring-4 ring-leaf/30" : "border-ink/20 hover:border-ink"
+                  }`}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={c.url} alt={c.productName} className="max-h-full max-w-full object-contain" />
+                </button>
+              </li>
+            ))}
+          </ul>
+          {product && (
+            <div className="mt-3">
+              <label htmlFor="product-size" className={fieldLabel}>
+                Size · {Math.round(product.width * 100)}% of the width
+              </label>
+              <input id="product-size" type="range" min={PRODUCT_BOUNDS.width[0]} max={PRODUCT_BOUNDS.width[1]} step={0.01}
+                value={product.width} onChange={(e) => onChange(clampProduct({ ...product, width: Number(e.target.value) }))}
+                className="w-full accent-[var(--color-leaf)]" />
+            </div>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+// Drag the product anywhere on the preview; drag its corner to resize,
+// like a layer in a design tool. Reads the layer's real box from the
+// player's DOM so the handle always fits it.
+function ProductHandle({ stage, product, onChange }: {
+  stage: React.RefObject<HTMLDivElement | null>;
+  product: ProductLayer;
+  onChange: (p: ProductLayer) => void;
+}) {
+  const [rect, setRect] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
+  const drag = useRef<{ mode: "move" | "resize"; x: number; y: number; start: ProductLayer } | null>(null);
+  const [active, setActive] = useState(false);
+
+  useEffect(() => {
+    const measure = () => {
+      const root = stage.current;
+      const el = root?.querySelector<HTMLElement>("[data-product-layer]");
+      if (!root || !el) return setRect(null);
+      const r = root.getBoundingClientRect();
+      const t = el.getBoundingClientRect();
+      setRect((prev) => {
+        const next = { left: t.left - r.left, top: t.top - r.top, width: t.width, height: t.height };
+        const same = prev && Object.keys(next).every((k) => Math.abs(prev[k as keyof typeof next] - next[k as keyof typeof next]) < 0.5);
+        return same ? prev : next;
+      });
+    };
+    measure();
+    const timer = setInterval(measure, 150);
+    return () => clearInterval(timer);
+  }, [stage]);
+
+  if (!rect) return null;
+
+  function begin(mode: "move" | "resize", e: React.PointerEvent) {
+    e.stopPropagation();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    drag.current = { mode, x: e.clientX, y: e.clientY, start: product };
+    setActive(true);
+  }
+  const startMove = (e: React.PointerEvent) => begin("move", e);
+  const startResize = (e: React.PointerEvent) => begin("resize", e);
+  const move = (e: React.PointerEvent) => {
+    const root = stage.current;
+    if (!drag.current || !root) return;
+    const r = root.getBoundingClientRect();
+    const dx = (e.clientX - drag.current.x) / r.width;
+    const dy = (e.clientY - drag.current.y) / r.height;
+    const s = drag.current.start;
+    onChange(
+      clampProduct(
+        drag.current.mode === "move"
+          ? { ...s, x: s.x + dx, y: s.y + dy }
+          : // Resizing from the corner grows both ways around the centre.
+            { ...s, width: s.width + dx * 2 },
+      ),
+    );
+  };
+  const end = (e: React.PointerEvent) => {
+    drag.current = null;
+    setActive(false);
+    e.currentTarget.releasePointerCapture(e.pointerId);
+  };
+
+  return (
+    <div
+      role="button"
+      aria-label="Move the product (drag). Drag the corner to resize."
+      tabIndex={0}
+      onPointerDown={startMove}
+      onPointerMove={move}
+      onPointerUp={end}
+      onPointerCancel={end}
+      style={{ left: rect.left, top: rect.top, width: rect.width, height: rect.height, touchAction: "none" }}
+      className={`absolute cursor-move rounded-md border-2 border-dashed ${active ? "border-yolk bg-yolk/10" : "border-white/70 hover:border-yolk"}`}
+    >
+      <span
+        onPointerDown={startResize}
+        onPointerMove={move}
+        onPointerUp={end}
+        onPointerCancel={end}
+        aria-hidden
+        className="absolute -bottom-2 -right-2 size-4 cursor-nwse-resize rounded-sm border-2 border-ink bg-yolk"
+      />
+    </div>
+  );
 }

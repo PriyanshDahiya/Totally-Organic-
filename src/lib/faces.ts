@@ -35,7 +35,7 @@ function loadDetector(): Promise<FaceApi> {
 }
 
 // A face's vertical band on the frame, as fractions of the height.
-export type FaceBand = { top: number; bottom: number };
+export type FaceBand = { top: number; bottom: number; left: number; right: number };
 
 async function facesInImage(url: string): Promise<FaceBand[]> {
   const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
@@ -50,7 +50,12 @@ async function facesInImage(url: string): Promise<FaceBand[]> {
     );
     // The frame is shown 9:16 "cover"; Pexels stills are already portrait,
     // so vertical fractions map straight across.
-    return found.map((d) => ({ top: d.box.y / img.height, bottom: (d.box.y + d.box.height) / img.height }));
+    return found.map((d) => ({
+      top: d.box.y / img.height,
+      bottom: (d.box.y + d.box.height) / img.height,
+      left: d.box.x / img.width,
+      right: (d.box.x + d.box.width) / img.width,
+    }));
   } finally {
     input.dispose();
   }

@@ -1,6 +1,15 @@
-import { AbsoluteFill, Audio, Loop, OffthreadVideo, type CalculateMetadataFunction } from "remotion";
+import {
+  AbsoluteFill,
+  Audio,
+  Img,
+  Loop,
+  OffthreadVideo,
+  interpolate,
+  useCurrentFrame,
+  type CalculateMetadataFunction,
+} from "remotion";
 import { FRAME, OverlayText } from "./text";
-import { wallOfTextBaseSize, type FontId, type Music, type TextBox, type TextPosition } from "./style";
+import { wallOfTextBaseSize, type FontId, type Music, type ProductLayer, type TextBox, type TextPosition } from "./style";
 
 export type { FontId, Music, TextBox, TextPosition } from "./style";
 export { FONT_FAMILIES } from "./text";
@@ -22,6 +31,8 @@ export type WallOfTextProps = {
   music: Music | null;
   font: FontId;
   textScale: number;
+  // The brand's product floating over the footage, under the text.
+  product?: ProductLayer | null;
 };
 
 // Long enough to read the text once at a relaxed pace, since a Reel that
@@ -46,6 +57,7 @@ export function WallOfText({
   music,
   font,
   textScale,
+  product,
 }: WallOfTextProps) {
   const durationInFrames = wallOfTextDurationInFrames(lines);
   const loopFrames = backgroundDurationSeconds ? Math.max(1, Math.floor(backgroundDurationSeconds * FRAME.fps)) : null;
@@ -57,6 +69,7 @@ export function WallOfText({
     <AbsoluteFill style={{ backgroundColor: "#111" }}>
       {video && (loopFrames && loopFrames < durationInFrames ? <Loop durationInFrames={loopFrames}>{video}</Loop> : video)}
       {music && <Audio src={music.url} volume={0.55} loop />}
+      {product && <ProductOverlay product={product} />}
       <OverlayText
         lines={lines}
         baseSize={wallOfTextBaseSize(lines)}
@@ -66,5 +79,32 @@ export function WallOfText({
         textScale={textScale}
       />
     </AbsoluteFill>
+  );
+}
+
+// The product cutout: pops in over the first few frames (it's visible on
+// frame 0, which is the thumbnail), then floats gently so it feels placed in
+// the scene rather than pasted on.
+function ProductOverlay({ product }: { product: ProductLayer }) {
+  const frame = useCurrentFrame();
+  const width = product.width * FRAME.width;
+  const height = width / (product.aspect || 1);
+  const scale = interpolate(frame, [0, 8], [0.92, 1], { extrapolateRight: "clamp" });
+  const float = Math.sin(frame / 18) * 6;
+  return (
+    <Img
+      src={product.url}
+      data-product-layer
+      style={{
+        position: "absolute",
+        left: product.x * FRAME.width - width / 2,
+        top: product.y * FRAME.height - height / 2,
+        width,
+        height,
+        objectFit: "contain",
+        transform: `translateY(${float}px) scale(${scale}) rotate(-3deg)`,
+        filter: "drop-shadow(0 24px 30px rgba(0,0,0,0.45))",
+      }}
+    />
   );
 }

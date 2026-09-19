@@ -1,4 +1,5 @@
-import { signIn, signInWithGoogle, signUp } from "./actions";
+import { Button, field, fieldLabel, FinePrint, Panel } from "@/components/ui";
+import { signIn, signUp } from "./actions";
 
 export default async function LoginPage({
   searchParams,
@@ -8,35 +9,29 @@ export default async function LoginPage({
   const { error, message, next } = await searchParams;
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center gap-6 px-4">
-      <h1 className="text-2xl font-semibold">Sign in</h1>
+    <main className="mx-auto flex min-h-[80vh] max-w-md flex-col justify-center px-4">
+      <Panel className="p-6 sm:p-8">
+        <h1 className="font-display text-3xl font-extrabold tracking-tight">Get growing</h1>
+        <p className="mt-2 text-ink-soft">New here? Create an account and get 20 free credits for the beta.</p>
 
-      {error && <p className="rounded bg-red-50 p-3 text-sm text-red-700">{error}</p>}
-      {message && <p className="rounded bg-green-50 p-3 text-sm text-green-700">{message}</p>}
+        {error && <p className="mt-4 rounded-lg border-2 border-tomato bg-tomato/10 p-3 text-sm">{error}</p>}
+        {message && <p className="mt-4 rounded-lg border-2 border-leaf bg-leaf/10 p-3 text-sm">{message}</p>}
 
-      <form action={signInWithGoogle}>
-        <input type="hidden" name="next" value={next ?? ""} />
-        <button className="w-full rounded border px-4 py-2 font-medium">Continue with Google</button>
-      </form>
-
-      <form className="flex flex-col gap-3">
-        <input type="hidden" name="next" value={next ?? ""} />
-        <input name="email" type="email" required placeholder="Email" className="rounded border px-3 py-2" />
-        <input
-          name="password"
-          type="password"
-          required
-          minLength={8}
-          placeholder="Password"
-          className="rounded border px-3 py-2"
-        />
-        <button formAction={signIn} className="rounded bg-black px-4 py-2 font-medium text-white">
-          Sign in
-        </button>
-        <button formAction={signUp} className="rounded border px-4 py-2 font-medium">
-          Create account
-        </button>
-      </form>
+        <form className="mt-6 flex flex-col gap-4">
+          <input type="hidden" name="next" value={next ?? ""} />
+          <div>
+            <label htmlFor="email" className={fieldLabel}>Email</label>
+            <input id="email" name="email" type="email" required autoComplete="email" className={field} />
+          </div>
+          <div>
+            <label htmlFor="password" className={fieldLabel}>Password</label>
+            <input id="password" name="password" type="password" required minLength={8} autoComplete="current-password" className={field} />
+          </div>
+          <Button formAction={signIn}>Sign in</Button>
+          <Button formAction={signUp} variant="ghost">Create account</Button>
+        </form>
+        <FinePrint className="mt-6">At least 8 characters for the password.</FinePrint>
+      </Panel>
     </main>
   );
 }

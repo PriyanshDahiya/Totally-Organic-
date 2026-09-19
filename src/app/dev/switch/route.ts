@@ -7,7 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 // /dev/switch with no "as" goes back to the default account. The choice is a
 // cookie, so it only affects this browser and host.
 export async function GET(request: NextRequest) {
-  if (process.env.NODE_ENV === "production") return new NextResponse("Not found", { status: 404 });
+  if (process.env.NODE_ENV === "production" || process.env.AUTH_REQUIRED === "true") return new NextResponse("Not found", { status: 404 });
 
   const as = request.nextUrl.searchParams.get("as")?.trim().toLowerCase() ?? "";
   // Redirect on the host the browser used (request.url is normalised to

@@ -2,5 +2,8 @@
 -- fetches the video from a public URL when publishing. Objects are written
 -- only by the server (service role); there are no client write policies.
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('renders', 'renders', true, 52428800, array['video/mp4', 'image/jpeg'])
+values ('renders', 'renders', true, 52428800, array['video/mp4', 'image/jpeg', 'image/png'])
 on conflict (id) do nothing;
+
+-- Product cutouts (transparent PNGs) live here too.
+update storage.buckets set allowed_mime_types = array['video/mp4', 'image/jpeg', 'image/png'] where id = 'renders';

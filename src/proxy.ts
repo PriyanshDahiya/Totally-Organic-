@@ -1,8 +1,11 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-// Refreshes the Supabase session cookie on every request. Login is switched
-// off for now (see lib/current-user.ts), so nothing is redirected to /login.
+// App pages need a signed-in user when AUTH_REQUIRED=true (production).
+const PROTECTED = ["/cards", "/dashboard", "/onboarding", "/profile"];
+
+// Refreshes the Supabase session cookie on every request, and sends signed-out
+// visitors of app pages to /login.
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -24,7 +27,15 @@ export async function proxy(request: NextRequest) {
     },
   );
 
-  await supabase.auth.getClaims();
+  const { data } = await supabase.auth.getClaims();
+  const path = request.nextUrl.pathname;
+  if (process.env.AUTH_REQUIRED === "true" && !data?.claims && PROTECTED.some((p) => path.startsWith(p))) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/login";
+    url.search = "";
+    url.searchParams.set("next", path);
+    return NextResponse.redirect(url);
+  }
 
   return response;
 }

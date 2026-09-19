@@ -144,7 +144,7 @@ Tone do's:
 ${brand.tone_dos.map((t) => `- ${t}`).join("\n")}
 Tone don'ts:
 ${brand.tone_donts.map((t) => `- ${t}`).join("\n")}
-${product ? `\nProduct in the photos: ${product.name}${product.price ? ` (${product.price})` : ""}${product.description ? ` — ${product.description.slice(0, 300)}` : ""}\n` : ""}
+${product ? `\nProduct shown in the post: ${product.name}${product.price ? ` (${product.price})` : ""}${product.description ? ` — ${product.description.slice(0, 300)}` : ""}\n` : ""}
 Angle: ${angle.title}
 Pain point: ${angle.pain_point}
 

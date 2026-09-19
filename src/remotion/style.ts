@@ -12,6 +12,17 @@ export type Music = { url: string; title: string; credit: string | null };
 // as fractions of the frame (0-1). Overrides textPosition when set.
 export type TextBox = { x: number; y: number };
 
+// The brand's product floating over the video: a cutout (transparent PNG)
+// placed by its centre, as fractions of the frame, sized by width.
+export type ProductLayer = {
+  url: string;
+  // Cutout width / height, so the layer keeps its shape at any size.
+  aspect: number;
+  x: number;
+  y: number;
+  width: number;
+};
+
 export type CardStyle = {
   textPosition: TextPosition;
   textBox: TextBox | null;
@@ -22,7 +33,24 @@ export type CardStyle = {
   // Slideshow only: the product photos to use, in order. Null means the
   // first few of the product's gallery.
   slideImages?: string[] | null;
+  // Wall of Text only: the product on top of the footage.
+  product?: ProductLayer | null;
 };
+
+// Keeps the product inside the frame and clear of Instagram's header and
+// caption areas, at a size between a small badge and most of the width.
+export const PRODUCT_BOUNDS = { x: [0.12, 0.88], y: [0.18, 0.8], width: [0.15, 0.8] } as const;
+
+export function clampProduct(p: ProductLayer): ProductLayer {
+  const clamp = (v: number, [lo, hi]: readonly [number, number]) => Math.min(hi, Math.max(lo, v));
+  const r = (v: number) => Math.round(v * 1000) / 1000;
+  return {
+    ...p,
+    x: r(clamp(p.x, PRODUCT_BOUNDS.x)),
+    y: r(clamp(p.y, PRODUCT_BOUNDS.y)),
+    width: r(clamp(p.width, PRODUCT_BOUNDS.width)),
+  };
+}
 
 // Galleries usually open with clean product shots and end with ad graphics
 // that have their own text, which clashes with the overlay.
@@ -39,6 +67,7 @@ export const DEFAULT_STYLE: CardStyle = {
   music: null,
   font: "classic",
   textScale: 1,
+  product: null,
 };
 
 // How far a dragged text block's centre may go. The column is ~65% of the

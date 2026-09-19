@@ -22,7 +22,7 @@ const HASHTAGS: Record<string, string[]> = {
   fashion: ["outfitideas", "fashionmemes"],
 };
 
-const REELS_PER_TAG = 30;
+const REELS_PER_TAG = 20;
 const MIN_VIEWS = 50_000;
 const HOOKS_PER_TAG = 6;
 
@@ -30,7 +30,9 @@ const HooksSchema = z.object({
   hooks: z.array(
     z.object({
       source: z.number().describe("Number of the Reel the pattern came from"),
-      hook: z.string().describe("The hook pattern written as one concrete, general example, under 120 characters"),
+      hook: z
+        .string()
+        .describe("The hook itself, written exactly as it would appear on screen, as one concrete example. Not an instruction and no blanks."),
       format: z.enum(["wall_of_text", "slideshow"]).describe("slideshow for list/ranking/'things that' formats, else wall_of_text"),
     }),
   ),
@@ -41,10 +43,32 @@ const SYSTEM_PROMPT = `You study trending Instagram Reels and extract their hook
 For each Reel you get its caption and view count. The first line of a caption is usually the on-screen hook. Pick the Reels whose hook is a reusable pattern (a POV, a contrast, a list, a confession, a "tell me without telling me", a relatable complaint) and write the pattern as ONE concrete, general example that any brand could remix.
 
 Rules:
+- Write the hook itself, as the on-screen text a viewer would read. Never describe it or give instructions ("Ask your audience...", "Share a...", "List...").
+- Fill in every slot with a concrete example; no blanks like ___ or <placeholders>.
 - Rewrite in your own words; keep the structure, not the creator's exact sentence.
+- Skip engagement bait ("comment X", "tag a friend", "follow for more") and tutorials that only work as step-by-step instructions.
+- Hindi only in Latin letters (Hinglish), never Devanagari.
 - Skip giveaways, promotions, product ads, news, anything political, religious or about specific real people.
 - Skip hooks that only work with that creator's video.
 - Keep Hinglish if the original is Hinglish.`;
+
+// The model sometimes returns an instruction, a template or bait instead of
+// a hook despite the prompt; those make useless cards, so drop them.
+const INSTRUCTION = /^(ask|pose|share|list|use|show|present|write|create|try|post|make|start|tell|describe|highlight)\b/i;
+const BAIT = /\b(comments?|tag a|tag your|follow for|link in bio|dm me|giveaway)\b/i;
+
+export function isUsableHook(hook: string) {
+  const h = hook.trim();
+  return (
+    h.length >= 10 &&
+    h.length <= 160 &&
+    !INSTRUCTION.test(h) &&
+    !BAIT.test(h) &&
+    !/_{2,}|<[^>]+>/.test(h) && // blanks and placeholders
+    !/[\u0900-\u097F]/.test(h) && // Devanagari
+    !/\(e\.g\./i.test(h)
+  );
+}
 
 async function hooksFrom(posts: TrendPost[], limit: number) {
   const top = posts
@@ -59,7 +83,7 @@ async function hooksFrom(posts: TrendPost[], limit: number) {
     prompt: top.map((p, i) => `Reel ${i + 1} (${p.views?.toLocaleString("en-IN")} views): ${p.caption.slice(0, 300)}`).join("\n"),
   });
   return hooks
-    .filter((h) => top[h.source - 1] && h.hook.trim().length >= 10)
+    .filter((h) => top[h.source - 1] && isUsableHook(h.hook))
     .slice(0, limit)
     .map((h) => ({ ...h, post: top[h.source - 1] }));
 }

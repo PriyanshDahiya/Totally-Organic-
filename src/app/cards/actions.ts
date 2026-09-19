@@ -4,7 +4,7 @@ import { after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { rejectCard as reject, startApproval, type ApproveResult } from "@/lib/approve";
 import { getCurrentUser } from "@/lib/current-user";
-import { generateCard } from "@/lib/generate";
+import { brandCutouts, generateCard, type StoredCutout } from "@/lib/generate";
 import { createUploadUrl, listUploads, saveCardEdit, type CardEdit, type EditResult, type Upload } from "@/lib/edit";
 import { searchClips, type StockClip } from "@/lib/stock";
 import { findFaces, placeAroundFaces } from "@/lib/faces";
@@ -116,4 +116,15 @@ export async function smartPosition(
     console.error("smart position failed", err);
     return { ok: false, error: "Couldn't analyse this clip. Drag the text instead." };
   }
+}
+
+// The brand's product cutouts, for the editor's product picker (made on
+// first use and cached on the brand).
+export async function myProductCutouts(): Promise<StoredCutout[]> {
+  const me = await getCurrentUser();
+  const supabase = createAdminClient();
+  const { data: brand } = await supabase.from("brands").select("id, profile").eq("user_id", me.id).maybeSingle();
+  if (!brand) return [];
+  const { data: products } = await supabase.from("products").select("id, name, image_urls").eq("brand_id", brand.id);
+  return brandCutouts(brand.id, brand.profile as Record<string, unknown>, products ?? []).catch(() => []);
 }

@@ -8,7 +8,7 @@ import {
 } from "./WallOfText";
 import { Slideshow, calculateSlideshowMetadata, slideshowDurationInFrames, type SlideshowProps } from "./Slideshow";
 
-const style = { textPosition: "upper", textBox: null, music: null, font: "classic", textScale: 1 } as const;
+const style = { textPosition: "upper", textBox: null, music: null, font: "classic", textScale: 1, product: null } as const;
 
 const wallOfTextDefaults: WallOfTextProps = {
   lines: ["me at 10pm: tomorrow I change my life", "me at 6am:"],

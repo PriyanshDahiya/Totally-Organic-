@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { createAdminClient } from "./supabase/admin";
 import type { StockClip } from "./stock";
-import { clampTextBox, withStyleDefaults, TEXT_SCALE, type CardStyle } from "@/remotion/style";
+import { clampProduct, clampTextBox, withStyleDefaults, TEXT_SCALE, type CardStyle } from "@/remotion/style";
 
 // Editing a card is free (credits pay for rendering, not for tweaking). It's
 // allowed while the card waits for review, and after a failed render so the
@@ -44,6 +44,16 @@ const EditSchema = z.object({
   textBox: z.object({ x: z.number().min(0).max(1), y: z.number().min(0).max(1) }).nullable().optional(),
   font: z.enum(["classic", "impact", "serif", "typewriter", "marker"]),
   slideImages: z.array(z.string()).max(12).nullable().optional(),
+  product: z
+    .object({
+      url: z.string().max(500),
+      aspect: z.number().positive().max(20),
+      x: z.number(),
+      y: z.number(),
+      width: z.number(),
+    })
+    .nullable()
+    .optional(),
   textScale: z.number().min(TEXT_SCALE.min).max(TEXT_SCALE.max),
   background: z
     .object({
@@ -78,7 +88,7 @@ export async function saveCardEdit(jobId: string, userId: string, input: unknown
   const supabase = createAdminClient();
   const { data, error } = await supabase
     .from("generation_jobs")
-    .select("id, status, format, style, brands!inner(user_id), video_assets(review_status, render_status), products(image_urls)")
+    .select("id, status, format, style, brands!inner(user_id, profile), video_assets(review_status, render_status), products(image_urls)")
     .eq("id", jobId)
     .maybeSingle();
   if (error) return { ok: false, error: error.message };
@@ -87,7 +97,7 @@ export async function saveCardEdit(jobId: string, userId: string, input: unknown
     status: string;
     format: string;
     style: Partial<CardStyle> | null;
-    brands: { user_id: string };
+    brands: { user_id: string; profile: { productCutouts?: { url: string }[] } };
     video_assets: { review_status: string; render_status: string }[];
     products: { image_urls: string[] } | null;
   } | null;
@@ -98,6 +108,12 @@ export async function saveCardEdit(jobId: string, userId: string, input: unknown
   const editable =
     !asset || asset.review_status === "pending" || (asset.review_status === "approved" && asset.render_status === "failed");
   if (!editable) return { ok: false, error: "This card is already rendering or rendered." };
+
+  // A product layer may only use one of this brand's own cutouts.
+  const cutoutUrls = new Set((job.brands.profile.productCutouts ?? []).map((c) => c.url));
+  if (edit.product && !cutoutUrls.has(edit.product.url)) {
+    return { ok: false, error: "That product image isn't one of your cutouts." };
+  }
 
   const style: CardStyle = {
     ...withStyleDefaults(job.style),
@@ -110,6 +126,7 @@ export async function saveCardEdit(jobId: string, userId: string, input: unknown
       job.format === "slideshow" && edit.slideImages?.length
         ? edit.slideImages.filter((u) => job.products?.image_urls.includes(u))
         : null,
+    product: job.format === "wall_of_text" && edit.product ? clampProduct(edit.product) : null,
   };
   const { error: updateError } = await supabase
     .from("generation_jobs")

@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { getCurrentUser } from "@/lib/current-user";
+import { getSignedInUser } from "@/lib/current-user";
 import { ButtonLink, FinePrint, Panel, Stamp, Sticker } from "@/components/ui";
 
 const STEPS = [
@@ -24,8 +24,10 @@ const STEPS = [
 ];
 
 export default async function Home() {
-  const me = await getCurrentUser();
-  const { data: brand } = await createAdminClient().from("brands").select("id").eq("user_id", me.id).maybeSingle();
+  const me = await getSignedInUser();
+  const { data: brand } = me
+    ? await createAdminClient().from("brands").select("id").eq("user_id", me.id).maybeSingle()
+    : { data: null };
 
   return (
     <main className="mx-auto max-w-6xl px-4 sm:px-6">
@@ -44,7 +46,7 @@ export default async function Home() {
             You swipe, you keep the good ones, you post.
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-4">
-            <ButtonLink href={brand ? "/cards" : "/onboarding"} className="px-6 py-3 text-lg">
+            <ButtonLink href={!me ? "/login" : brand ? "/cards" : "/onboarding"} className="px-6 py-3 text-lg">
               {brand ? "Go to today's harvest" : "Plant your brand"} →
             </ButtonLink>
             {brand && (
