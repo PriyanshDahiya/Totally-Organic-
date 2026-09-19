@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button, FinePrint, Stamp, Sticker } from "@/components/ui";
 import { approveCard, rejectCard } from "./actions";
-import { CardDetails, CardMedia, type DoneCard } from "./card-list";
+import { CardDetails, CardMedia, stillOf, type DoneCard } from "./card-list";
 import { CardEditor } from "./card-editor";
 import type { PreviewCard } from "./data";
 
@@ -240,7 +240,7 @@ function DraggableCard({ card, paused, onSwipe }: {
       className="relative cursor-grab select-none active:cursor-grabbing"
     >
       <Sticker tone="card" rotate={-4} className="absolute -left-3 -top-3 z-20">
-        {card.format === "slideshow" ? "Slideshow" : "Reel"}
+        {card.format === "slideshow" ? "Slideshow" : card.format === "green_screen" ? "Meme" : "Reel"}
       </Sticker>
       <div className="overflow-hidden rounded-2xl border-2 border-ink bg-ink shadow-[6px_6px_0_var(--color-ink)]">
         <CardMedia card={card} paused={paused} />
@@ -259,7 +259,7 @@ function DraggableCard({ card, paused, onSwipe }: {
 
 function NextPreview({ item }: { item: DeckItem }) {
   const card = item.card;
-  const still = card?.status === "done" ? (card.format === "slideshow" ? card.images[0] : card.background?.posterUrl) : null;
+  const still = card?.status === "done" ? stillOf(card) : null;
   return still ? (
     // eslint-disable-next-line @next/next/no-img-element
     <img src={still} alt="" className="h-full w-full rounded-2xl object-cover opacity-50" />

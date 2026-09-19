@@ -80,7 +80,9 @@ export async function startApproval(
   // Everything here comes from the database, never from the browser, so the
   // renderer only ever loads Pexels, the brand's own uploads or its catalog.
   const renderJob: RenderJob =
-    job.format === "slideshow"
+    job.format === "green_screen"
+      ? { composition: "Meme", props: { lines, ...style, backdrop: style.backdrop ?? null, meme: style.meme ?? null } }
+      : job.format === "slideshow"
       ? {
           composition: "Slideshow",
           props: { slides: lines, images: slideImagesFor({ slideImages }, job.products!.image_urls), ...style },

@@ -2,6 +2,7 @@ import "server-only";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { createAdminClient } from "./supabase/admin";
+import { memeById, toMemeLayer } from "./memes";
 import type { StockClip } from "./stock";
 import { clampProduct, clampTextBox, withStyleDefaults, TEXT_SCALE, type CardStyle } from "@/remotion/style";
 
@@ -55,6 +56,8 @@ const EditSchema = z.object({
     .nullable()
     .optional(),
   textScale: z.number().min(TEXT_SCALE.min).max(TEXT_SCALE.max),
+  // Meme cards: which reaction meme from the library.
+  memeId: z.number().int().nullable().optional(),
   background: z
     .object({
       videoUrl: z.string(),
@@ -128,13 +131,18 @@ export async function saveCardEdit(jobId: string, userId: string, input: unknown
         : null,
     product: job.format === "wall_of_text" && edit.product ? clampProduct(edit.product) : null,
   };
+  if (job.format === "green_screen" && edit.memeId != null) {
+    const meme = memeById(edit.memeId);
+    if (!meme) return { ok: false, error: "That meme isn't in the library." };
+    style.meme = toMemeLayer(meme);
+  }
   const { error: updateError } = await supabase
     .from("generation_jobs")
     // A slideshow's pictures are its product photos, never a background video.
     .update({
       overlay_text: edit.lines.join("\n"),
       style,
-      background: job.format === "slideshow" ? null : (bg as StockClip | null),
+      background: job.format === "wall_of_text" ? (bg as StockClip | null) : null,
     })
     .eq("id", job.id);
   if (updateError) return { ok: false, error: updateError.message };

@@ -9,6 +9,7 @@ import {
   clampTextBox,
   PRODUCT_BOUNDS,
   slideImagesFor,
+  type MemeLayer,
   type ProductLayer,
   FONT_OPTIONS,
   POSITION_OPTIONS,
@@ -19,6 +20,7 @@ import {
 } from "@/remotion/style";
 import { createClient } from "@/lib/supabase/client";
 import type { StockClip } from "@/lib/stock";
+import { MEMES, toMemeLayer } from "@/lib/memes";
 import type { Upload } from "@/lib/edit";
 import { Button, FinePrint, field, fieldLabel } from "@/components/ui";
 import {
@@ -48,6 +50,8 @@ export function CardEditor({ card, onClose, onSaved }: { card: DoneCard; onClose
   // The product floating over the footage (Wall of Text only).
   const [product, setProduct] = useState<ProductLayer | null>(card.style.product ?? null);
   const [background, setBackground] = useState<StockClip | null>(card.background);
+  // The reaction meme (Meme format only).
+  const [meme, setMeme] = useState<MemeLayer | null>(card.style.meme ?? null);
   const [saving, setSaving] = useState(false);
   const [placing, setPlacing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -95,6 +99,7 @@ export function CardEditor({ card, onClose, onSaved }: { card: DoneCard; onClose
       background,
       slideImages: card.format === "slideshow" ? slideImages : null,
       product: card.format === "wall_of_text" ? product : null,
+      memeId: card.format === "green_screen" ? (meme?.id ?? null) : null,
     });
     setSaving(false);
     if (!result.ok) return setError(result.error);
@@ -122,7 +127,10 @@ export function CardEditor({ card, onClose, onSaved }: { card: DoneCard; onClose
               <Player
                 {...playerConfig(card, {
                   lines: previewLines.length ? previewLines : [" "],
-                  style: { textPosition: position, textBox, music: card.style.music, font, textScale: previewScale, slideImages, product },
+                  style: {
+                    textPosition: position, textBox, music: card.style.music, font, textScale: previewScale, slideImages, product,
+                    meme, backdrop: card.style.backdrop ?? null,
+                  },
                   background,
                 })}
                 compositionWidth={WALL_OF_TEXT.width}
@@ -224,7 +232,9 @@ export function CardEditor({ card, onClose, onSaved }: { card: DoneCard; onClose
 
             {card.format === "wall_of_text" && <ProductPicker product={product} onChange={setProduct} />}
 
-            {card.format === "slideshow" ? (
+            {card.format === "green_screen" ? (
+              <MemePicker current={meme} onPick={setMeme} />
+            ) : card.format === "slideshow" ? (
               <PhotoPicker gallery={card.images} selected={slideImages} onChange={setSlideImages}
                 productName={card.productName} />
             ) : (
@@ -761,5 +771,36 @@ function ProductHandle({ stage, product, onChange }: {
         className="absolute -bottom-2 -right-2 size-4 cursor-nwse-resize rounded-sm border-2 border-ink bg-yolk"
       />
     </div>
+  );
+}
+
+// The reaction meme under the text. The library is small and static, so
+// it's bundled rather than fetched.
+function MemePicker({ current, onPick }: { current: MemeLayer | null; onPick: (m: MemeLayer) => void }) {
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const shown = MEMES.filter((m) => !q || `${m.name} ${m.mood} ${m.useWhen} ${m.quote ?? ""}`.toLowerCase().includes(q));
+  return (
+    <section>
+      <div className="mb-3 flex items-baseline justify-between gap-3">
+        <p className={fieldLabel}>Reaction meme {current && <span className="normal-case tracking-normal text-ink-soft">· {current.name}</span>}</p>
+      </div>
+      <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search: shocked, again, laugh, stop…"
+        className={`${field} mb-3 text-sm`} />
+      <ul className="grid max-h-80 grid-cols-3 gap-2 overflow-y-auto pr-1 sm:grid-cols-4">
+        {shown.map((m) => (
+          <li key={m.id}>
+            <button type="button" onClick={() => onPick(toMemeLayer(m))} aria-pressed={current?.id === m.id} title={`${m.name}: ${m.useWhen}`}
+              className={`flex w-full flex-col items-center gap-1 rounded-xl border-2 bg-[#7a3fa0] p-1.5 text-left ${
+                current?.id === m.id ? "border-leaf ring-4 ring-leaf/30" : "border-ink/20 hover:border-ink"
+              }`}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={m.poster} alt="" loading="lazy" className="aspect-square w-full object-contain" />
+              <span className="line-clamp-1 w-full rounded bg-card px-1 text-[11px] font-semibold">{m.name}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

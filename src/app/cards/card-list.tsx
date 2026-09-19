@@ -172,7 +172,7 @@ function CardView({
     <article className="space-y-4">
       <div className="relative">
         <Sticker tone={rendered ? "leaf" : "card"} rotate={-4} className="absolute -left-3 -top-3 z-10">
-          {rendered ? "Shipped" : `${card.format === "slideshow" ? "Slideshow" : "Batch"} ${batchCode(card.jobId)}`}
+          {rendered ? "Shipped" : `${card.format === "slideshow" ? "Slideshow" : card.format === "green_screen" ? "Meme" : "Batch"} ${batchCode(card.jobId)}`}
         </Sticker>
         {rendered && (
           <Stamp top="READY FOR" center="REELS" bottom="1080 × 1920" tone="leaf" size={78} rotate={12}
@@ -240,6 +240,19 @@ export function CardDetails({ card }: { card: DoneCard }) {
           </Row>
           <Row label="Remixed hook">{card.hook}</Row>
           <Row label="Angle">{card.angle}</Row>
+          {card.format === "green_screen" && (
+            <Row label="Meme">
+              {card.style.meme?.name ?? "none"}
+              {card.style.backdrop?.credit && (
+                <>
+                  {" "}· photo by{" "}
+                  <a href={card.style.backdrop.credit.pexelsUrl} target="_blank" rel="noreferrer" className="underline decoration-2 underline-offset-2">
+                    {card.style.backdrop.credit.name}
+                  </a>
+                </>
+              )}
+            </Row>
+          )}
           {card.format === "slideshow" && <Row label="Photos">{card.productName ?? "Product"} ({card.images.length})</Row>}
           {card.format === "wall_of_text" && <Row label="Footage">
             {card.background?.source === "upload" ? (
@@ -333,9 +346,9 @@ export function CardMedia({ card, paused }: { card: DoneCard; paused: boolean })
           // need a company license: https://remotion.dev/license
           acknowledgeRemotionLicense
         />
-      ) : (card.format === "slideshow" ? card.images[0] : card.background?.posterUrl) ? (
+      ) : stillOf(card) ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={(card.format === "slideshow" ? card.images[0] : card.background?.posterUrl)!} alt="" loading="lazy"
+        <img src={stillOf(card)!} alt="" loading="lazy"
           className="h-full w-full object-cover opacity-70" />
       ) : null}
     </div>
@@ -444,4 +457,11 @@ export function ShareButton({ card }: { card: DoneCard }) {
       {state === "busy" ? "Preparing…" : state === "copied" ? "Caption copied ✓" : "Share to Instagram"}
     </button>
   );
+}
+
+// A still to show while a card's player isn't mounted.
+export function stillOf(card: DoneCard) {
+  if (card.format === "slideshow") return card.images[0] ?? null;
+  if (card.format === "green_screen") return card.style.backdrop?.url ?? null;
+  return card.background?.posterUrl ?? null;
 }

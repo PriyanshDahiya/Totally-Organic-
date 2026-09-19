@@ -23,6 +23,26 @@ export type ProductLayer = {
   width: number;
 };
 
+// A reaction meme for the Meme (green screen) format: a keyed clip with
+// transparency (WebM, VP9 alpha) or, for the few that aren't green screen,
+// a plain clip shown in a frame. Carries its own audio: the sound is the joke.
+export type MemeLayer = {
+  id: number;
+  name: string;
+  url: string;
+  poster: string;
+  width: number;
+  height: number;
+  durationSeconds: number;
+  transparent: boolean;
+};
+
+// The still photo behind a Meme card, from Pexels.
+export type Backdrop = {
+  url: string;
+  credit: { name: string; url: string; pexelsUrl: string } | null;
+};
+
 export type CardStyle = {
   textPosition: TextPosition;
   textBox: TextBox | null;
@@ -35,6 +55,9 @@ export type CardStyle = {
   slideImages?: string[] | null;
   // Wall of Text only: the product on top of the footage.
   product?: ProductLayer | null;
+  // Meme only: the reaction clip and the photo behind it.
+  meme?: MemeLayer | null;
+  backdrop?: Backdrop | null;
 };
 
 // Keeps the product inside the frame and clear of Instagram's header and

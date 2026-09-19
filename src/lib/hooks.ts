@@ -5,7 +5,7 @@ import type { BrandProfile } from "./brand-profile";
 import type { Culture } from "./voice";
 import type { Moment } from "./moments";
 
-export type Format = "wall_of_text" | "slideshow";
+export type Format = "wall_of_text" | "slideshow" | "green_screen";
 
 export type RemixInput = {
   brand: {
@@ -30,6 +30,8 @@ export type RemixInput = {
   customerPhrases: string[];
   // A timely moment to tie into, if any.
   moment: Moment | null;
+  // Meme format: the reaction memes to choose from.
+  memeMenu?: string;
 };
 
 // Length limits are enforced here rather than in the JSON schema: Groq's
@@ -40,6 +42,8 @@ const LIMITS = {
   // the first-person posts that do well on Reels.
   wall_of_text: { minLines: 1, maxLines: 4, maxLineChars: 200, maxTotalChars: 260 },
   slideshow: { minLines: 3, maxLines: 6, maxLineChars: 90, maxTotalChars: 450 },
+  // Meme: a short setup; the reaction meme is the punchline.
+  green_screen: { minLines: 1, maxLines: 2, maxLineChars: 110, maxTotalChars: 150 },
 } as const;
 
 // The feeling the footage should show. Matched against stock clip titles,
@@ -66,6 +70,12 @@ const RemixSchema = z.object({
     ),
   caption: z.string().describe("Instagram caption: 1-2 casual sentences, then 3-5 relevant hashtags"),
   why: z.string().describe("One sentence for the founder on why this post should work, naming the hook pattern"),
+  scene: z
+    .string()
+    .describe("Meme format only: a short stock-photo search for the backdrop that sets the joke's scene, e.g. 'messy desk laptop night' or 'office meeting room'. Empty for other formats."),
+  meme_id: z
+    .number()
+    .describe("Meme format only: the id of the reaction meme from the list that lands the punchline. 0 for other formats."),
   emotion: z
     .enum(EMOTIONS)
     .describe("The feeling a person in the background video should show so the joke lands, e.g. the pain point -> frustrated or tired, the payoff -> smug or happy"),
@@ -137,7 +147,14 @@ function checkLimits(remix: Remix, format: Format): string | null {
 
 export async function remixHook(input: RemixInput): Promise<Remix> {
   const { brand, angle, hook, mentionBrand, product } = input;
-  const format = hook.format === "wall_of_text" ? "Wall of Text (text over a background video)" : "Slideshow (text over product photos, one line per slide)";
+  const format =
+    hook.format === "wall_of_text"
+      ? "Wall of Text (text over a background video)"
+      : hook.format === "slideshow"
+        ? "Slideshow (text over product photos, one line per slide)"
+        : `Meme (a short setup line on screen, then a famous reaction meme plays underneath as the punchline).
+Write only the setup: 1-2 short lines, under 150 characters, that make the meme's reaction land. Keep the hook's structure if it fits in that length; otherwise keep its spirit. Don't repeat or describe the meme's own line. Pick meme_id from this list:
+${input.memeMenu ?? ""}`;
 
   const prompt = `Brand: ${brand.name} — ${brand.one_liner} (${brand.category})
 Tone do's:

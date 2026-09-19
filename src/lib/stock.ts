@@ -181,3 +181,24 @@ export async function findBackgroundClip(
 export async function searchClips(query: string, limit = 12): Promise<StockClip[]> {
   return (await searchPexels(query, 30)).slice(0, limit).map((c) => toClip(c, query));
 }
+
+// Still photos for the Meme format's backdrop (Pexels photo search). Cropped
+// by Pexels' image CDN to 9:16 at render size.
+type PexelsPhoto = { id: number; url: string; alt: string; photographer: string; photographer_url: string; src: { original: string } };
+
+export type StockPhoto = { url: string; credit: { name: string; url: string; pexelsUrl: string } };
+
+export async function findBackgroundPhoto(query: string, avoid: Set<string> = new Set()): Promise<StockPhoto | null> {
+  const url = new URL("https://api.pexels.com/v1/search");
+  url.search = new URLSearchParams({ query, orientation: "portrait", per_page: "15" }).toString();
+  const res = await fetch(url, { headers: { Authorization: process.env.PEXELS_API_KEY! }, signal: AbortSignal.timeout(10_000) });
+  if (!res.ok) throw new Error(`Pexels photo search failed (${res.status}).`);
+  const { photos } = (await res.json()) as { photos: PexelsPhoto[] };
+  const usable = photos.filter((p) => !avoid.has(p.url) && !SENSITIVE.test(`${p.alt} ${p.url}`.toLowerCase()));
+  if (usable.length === 0) return null;
+  const p = usable[Math.floor(Math.random() * Math.min(5, usable.length))];
+  return {
+    url: `${p.src.original}?auto=compress&cs=tinysrgb&fit=crop&w=1080&h=1920`,
+    credit: { name: p.photographer, url: p.photographer_url, pexelsUrl: p.url },
+  };
+}

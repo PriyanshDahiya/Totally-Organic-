@@ -7,11 +7,13 @@ import { bundle } from "@remotion/bundler";
 import { renderMedia, renderStill, selectComposition } from "@remotion/renderer";
 import type { WallOfTextProps } from "@/remotion/WallOfText";
 import type { SlideshowProps } from "@/remotion/Slideshow";
+import type { MemeProps } from "@/remotion/Meme";
 
 // One entry per composition registered in src/remotion/Root.tsx.
 export type RenderJob =
   | { composition: "WallOfText"; props: WallOfTextProps }
-  | { composition: "Slideshow"; props: SlideshowProps };
+  | { composition: "Slideshow"; props: SlideshowProps }
+  | { composition: "Meme"; props: MemeProps };
 
 // Renders the same composition the browser preview plays, so the final video
 // matches what the founder approved. Runs locally for now; Remotion Lambda is

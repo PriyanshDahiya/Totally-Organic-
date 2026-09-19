@@ -11,7 +11,7 @@ export type PreviewCard =
   | {
       status: "done";
       jobId: string;
-      format: "wall_of_text" | "slideshow";
+      format: "wall_of_text" | "slideshow" | "green_screen";
       // Product photos for a slideshow; empty for Wall of Text.
       images: string[];
       productName: string | null;
@@ -40,7 +40,7 @@ const PAGE_SIZE = 30;
 type JobRow = {
   id: string;
   status: "queued" | "generating" | "done" | "failed";
-  format: "wall_of_text" | "slideshow";
+  format: "wall_of_text" | "slideshow" | "green_screen";
   angle: string;
   overlay_text: string | null;
   why: string | null;

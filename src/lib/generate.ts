@@ -1,7 +1,8 @@
 import "server-only";
 import { createAdminClient } from "./supabase/admin";
 import { remixHook, type Format, type Remix } from "./hooks";
-import { findBackgroundClip, type StockClip } from "./stock";
+import { findBackgroundClip, findBackgroundPhoto, type StockClip } from "./stock";
+import { MEMES, memeById, memeMenu, toMemeLayer } from "./memes";
 import { pickMusic } from "./music";
 import { generateScenes } from "./scenes";
 import { suggestAudio } from "./audio";
@@ -27,14 +28,14 @@ import { loadPreferences, weightedPick } from "./preferences";
 // recommendation, which is how brands show up in posts that perform.
 const MENTION_ODDS = { rarely: 0.2, sometimes: 0.4, often: 0.65 } as const;
 const TEXT_POSITIONS: TextPosition[] = ["top", "upper", "upper", "center"];
-// Share of cards that are slideshows when the brand has product photos,
-// before learning from swipes shifts it.
-const SLIDESHOW_SHARE = 0.4;
 // How many customer phrases each card sees (a rotating sample keeps posts varied).
 const PHRASES_PER_CARD = 6;
 // Share of Wall of Text cards that show the product, for brands with a
 // usable cutout: most, so posts sell, but not all, so the feed stays varied.
 const PRODUCT_SHARE = 0.8;
+// Rough share of each format before learning from swipes shifts it. Memes
+// need the meme library; slideshows need product photos.
+const FORMAT_WEIGHT: Record<Format, number> = { wall_of_text: 0.45, slideshow: 0.3, green_screen: 0.3 };
 // Slideshow needs enough photos to fill its slides.
 const MIN_SLIDESHOW_IMAGES = 3;
 // Don't reuse a hook this brand saw in its last N cards.
@@ -138,6 +139,24 @@ async function pickBackground(
   return null;
 }
 
+// A still photo from one of the brand's scenes, for the Meme format.
+async function pickBackdrop(
+  brandId: string,
+  profile: Pick<BrandProfile, "identity" | "segments"> & { scenes?: string[] },
+  angles: BrandProfile["angles"],
+) {
+  let scenes = profile.scenes ?? [];
+  if (scenes.length === 0) {
+    scenes = await generateScenes(profile, angles);
+    await createAdminClient().from("brands").update({ profile: { ...profile, scenes } }).eq("id", brandId);
+  }
+  for (const scene of [...scenes].sort(() => Math.random() - 0.5).slice(0, 3)) {
+    const photo = await findBackgroundPhoto(scene);
+    if (photo) return photo;
+  }
+  return null;
+}
+
 export async function generateCard(brandId: string, opts: { format?: Format } = {}): Promise<Card> {
   const supabase = createAdminClient();
 
@@ -147,7 +166,7 @@ export async function generateCard(brandId: string, opts: { format?: Format } = 
     supabase.from("products").select("id, name, price, description, image_urls").eq("brand_id", brandId),
     supabase
       .from("generation_jobs")
-      .select("trending_clip_id, angle, background")
+      .select("trending_clip_id, angle, background, style")
       .eq("brand_id", brandId)
       .order("requested_at", { ascending: false })
       .limit(RECENT_WINDOW),
@@ -166,13 +185,14 @@ export async function generateCard(brandId: string, opts: { format?: Format } = 
 
   // Format: slideshows only for brands with product photos, and the split
   // shifts toward whichever format this founder approves more.
-  const format: Format =
-    opts.format ??
-    (slideshowProducts.length === 0
-      ? "wall_of_text"
-      : weightedPick<Format>(["wall_of_text", "slideshow"], (f) =>
-          (f === "slideshow" ? SLIDESHOW_SHARE : 1 - SLIDESHOW_SHARE) * prefs.format(f),
-        ));
+  const formats: Format[] = [
+    "wall_of_text",
+    ...(slideshowProducts.length ? (["slideshow"] as const) : []),
+    ...(MEMES.length ? (["green_screen"] as const) : []),
+  ];
+  const format: Format = opts.format ?? weightedPick(formats, (f) => FORMAT_WEIGHT[f] * prefs.format(f));
+  // Memes remix the same hooks as Wall of Text, cut down to a setup line.
+  const hookFormat: Format = format === "green_screen" ? "wall_of_text" : format;
 
   // Hooks: niche matches first, "general" otherwise; skip hooks used
   // recently; favour hooks this founder has approved before.
@@ -180,7 +200,7 @@ export async function generateCard(brandId: string, opts: { format?: Format } = 
   const now = Date.now();
   const usable = ((clips ?? []) as Clip[]).filter(
     (c) =>
-      c.format === format &&
+      c.format === hookFormat &&
       !usedClips.has(c.id) &&
       (isSeed(c) || now - new Date(c.fetched_at).getTime() < TREND_MAX_AGE_MS),
   );
@@ -214,7 +234,7 @@ export async function generateCard(brandId: string, opts: { format?: Format } = 
     if (cutouts.length) shotCutout = pickRandom(cutouts);
   }
   const product =
-    clip.format === "slideshow"
+    format === "slideshow"
       ? pickRandom(slideshowProducts)
       : (shotCutout && (products ?? []).find((p) => p.id === shotCutout!.productId)) || null;
 
@@ -225,7 +245,7 @@ export async function generateCard(brandId: string, opts: { format?: Format } = 
       product_id: product?.id ?? null,
       trending_clip_id: clip.id,
       angle: angle.title,
-      format: clip.format,
+      format: format,
       status: "generating",
     })
     .select("id")
@@ -233,7 +253,8 @@ export async function generateCard(brandId: string, opts: { format?: Format } = 
   if (jobError) throw jobError;
 
   try {
-    const mentionBrand = Math.random() < MENTION_ODDS[brand.mention_frequency as keyof typeof MENTION_ODDS];
+    // Meme cards never name the brand on screen; the caption does.
+    const mentionBrand = format !== "green_screen" && Math.random() < MENTION_ODDS[brand.mention_frequency as keyof typeof MENTION_ODDS];
     const remix = await remixHook({
       brand: {
         name: profile.identity.name,
@@ -243,7 +264,7 @@ export async function generateCard(brandId: string, opts: { format?: Format } = 
         tone_donts: brand.tone_donts,
       },
       angle,
-      hook: { text: clip.hook_text, format: clip.format },
+      hook: { text: clip.hook_text, format },
       mentionBrand,
       product: product ?? undefined,
       language,
@@ -251,12 +272,17 @@ export async function generateCard(brandId: string, opts: { format?: Format } = 
       voiceExamples: voice.examples,
       customerPhrases,
       moment,
+      // Memes used in recent cards are left out so the feed doesn't repeat.
+      memeMenu:
+        format === "green_screen"
+          ? memeMenu(new Set((recent ?? []).flatMap((r) => ((r.style as CardStyle | null)?.meme ? [(r.style as CardStyle).meme!.id] : []))))
+          : undefined,
     });
 
     // A missing background isn't fatal: the card still previews on a plain
     // backdrop and can be regenerated.
     const background =
-      clip.format === "wall_of_text"
+      format === "wall_of_text"
         ? await pickBackground(
             brandId,
             profile,
@@ -273,7 +299,7 @@ export async function generateCard(brandId: string, opts: { format?: Format } = 
     const style: CardStyle = {
       ...DEFAULT_STYLE,
       // Slideshow text sits above the photo band, never over the product.
-      textPosition: clip.format === "slideshow" ? "top" : pickRandom(TEXT_POSITIONS),
+      textPosition: format === "wall_of_text" ? pickRandom(TEXT_POSITIONS) : "top",
       music: await pickMusic(),
     };
     // Faces in the footage, for keeping the text and product off them.
@@ -284,6 +310,18 @@ export async function generateCard(brandId: string, opts: { format?: Format } = 
           return [];
         })
       : [];
+
+    if (format === "green_screen") {
+      // The model's pick, or a random meme if it named one we don't have.
+      style.meme = toMemeLayer(memeById(remix.meme_id) ?? pickRandom(MEMES));
+      // The model's scene for this joke, else one of the brand's scenes.
+      style.backdrop = await (remix.scene.trim() ? findBackgroundPhoto(remix.scene) : Promise.resolve(null))
+        .then((photo) => photo ?? pickBackdrop(brandId, profile, angles))
+        .catch((err) => {
+        console.error("backdrop lookup failed", err);
+        return null;
+      });
+    }
 
     if (shotCutout) style.product = placeProduct(shotCutout, faces);
 
@@ -325,7 +363,7 @@ export async function generateCard(brandId: string, opts: { format?: Format } = 
 
     return {
       jobId: job.id,
-      format: clip.format,
+      format: format,
       hook: clip.hook_text,
       angle: angle.title,
       productId: product?.id ?? null,
