@@ -1,3 +1,13 @@
+---
+title: Totally Organic
+emoji: 🌱
+colorFrom: green
+colorTo: yellow
+sdk: docker
+app_port: 3000
+pinned: false
+---
+
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
 ## Getting Started

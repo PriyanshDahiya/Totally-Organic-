@@ -14,7 +14,9 @@ RUN npm ci
 
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN npm run build && node -e "require('@remotion/renderer').ensureBrowser()"
+RUN npm run build && node -e "require('@remotion/renderer').ensureBrowser()"   && chown -R node:node /app
+# Hosts like Hugging Face Spaces run the container as uid 1000 (node).
+USER node
 
 ENV NODE_ENV=production AUTH_REQUIRED=true
 EXPOSE 3000
