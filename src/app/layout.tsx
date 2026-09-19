@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Bricolage_Grotesque, JetBrains_Mono } from "next/font/google";
+import { connection } from "next/server";
 import { SiteHeader } from "@/components/site-header";
 import "./globals.css";
 
@@ -18,7 +19,10 @@ export const metadata: Metadata = {
   description: "Organic short-form content for D2C brands. *Not organic.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default async function RootLayout({ children }: LayoutProps<"/">) {
+  // Every page depends on who's signed in, so render per request; this also
+  // keeps the build from running database code without runtime secrets.
+  await connection();
   return (
     <html lang="en" className={`${bricolage.variable} ${jetbrains.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col">

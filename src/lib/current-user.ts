@@ -1,6 +1,7 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { connection } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -40,6 +41,9 @@ export async function getSignedInUser(): Promise<{ id: string; email: string } |
 }
 
 export async function getCurrentUser(): Promise<{ id: string; email: string }> {
+  // Pages that know the user are per-request: never prerender them at build
+  // time (secrets aren't there yet). Skipped in CLI scripts (no Next runtime).
+  if (process.env.NEXT_RUNTIME) await connection();
   if (AUTH_REQUIRED) {
     const user = await getSignedInUser();
     if (!user) redirect("/login");
