@@ -1,11 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PROTECTED = ["/dashboard", "/onboarding"];
-
-// Refreshes the Supabase session cookie on every request and bounces
-// signed-out users away from app pages. Real authorization happens in
-// server code and RLS; this is only the optimistic check.
+// Refreshes the Supabase session cookie on every request. Login is switched
+// off for now (see lib/current-user.ts), so nothing is redirected to /login.
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -27,16 +24,7 @@ export async function proxy(request: NextRequest) {
     },
   );
 
-  const { data } = await supabase.auth.getClaims();
-  const signedIn = Boolean(data?.claims);
-  const path = request.nextUrl.pathname;
-
-  if (!signedIn && PROTECTED.some((p) => path.startsWith(p))) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("next", path);
-    return NextResponse.redirect(url);
-  }
+  await supabase.auth.getClaims();
 
   return response;
 }

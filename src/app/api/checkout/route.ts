@@ -1,13 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { getCurrentUser } from "@/lib/current-user";
 
 // Creates a Lemon Squeezy checkout for the one paid plan and redirects to it.
 // The user id rides along as custom data so the webhook knows whom to credit.
 // https://docs.lemonsqueezy.com/api/checkouts/create-checkout
 export async function POST(request: NextRequest) {
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) return NextResponse.redirect(new URL("/login", request.url), { status: 303 });
+  const me = await getCurrentUser();
 
   const res = await fetch("https://api.lemonsqueezy.com/v1/checkouts", {
     method: "POST",
@@ -21,7 +19,7 @@ export async function POST(request: NextRequest) {
         type: "checkouts",
         attributes: {
           product_options: { redirect_url: new URL("/dashboard?checkout=success", request.url).toString() },
-          checkout_data: { email: auth.user.email, custom: { user_id: auth.user.id } },
+          checkout_data: { email: me.email, custom: { user_id: me.id } },
         },
         relationships: {
           store: { data: { type: "stores", id: process.env.LEMON_SQUEEZY_STORE_ID } },

@@ -18,6 +18,29 @@ export async function generateObject<T extends z.ZodType>(opts: {
   system: string;
   prompt: string;
 }): Promise<z.infer<T>> {
+  // The model occasionally emits JSON that doesn't match the schema (Groq
+  // rejects it with a 400) or is empty; a second try almost always works.
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      return await complete(opts);
+    } catch (err) {
+      const malformed =
+        (err instanceof Groq.APIError && err.status === 400) || err instanceof SyntaxError || err instanceof z.ZodError;
+      if (!malformed) throw err;
+      lastError = err;
+    }
+  }
+  console.error(`${opts.name}: malformed output twice`, lastError);
+  throw new Error("The AI returned a broken answer. Try again.");
+}
+
+async function complete<T extends z.ZodType>(opts: {
+  name: string;
+  schema: T;
+  system: string;
+  prompt: string;
+}): Promise<z.infer<T>> {
   // Strict structured output: https://console.groq.com/docs/structured-outputs
   const completion = await client.chat.completions.create({
     model: MODEL,
@@ -33,6 +56,6 @@ export async function generateObject<T extends z.ZodType>(opts: {
   });
 
   const content = completion.choices[0]?.message?.content;
-  if (!content) throw new Error("The AI returned an empty response. Try again.");
+  if (!content) throw new SyntaxError("Empty response");
   return opts.schema.parse(JSON.parse(content));
 }

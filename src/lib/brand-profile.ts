@@ -40,11 +40,13 @@ export const BrandProfileSchema = z.object({
 export type BrandProfile = z.infer<typeof BrandProfileSchema>;
 
 const SYSTEM_PROMPT = `You build brand profiles for small direct-to-consumer brands so we can write short-form social content for them.
-Base every field on the website content you are given. Where you have to infer (segments, competitors), make a sensible estimate from the product and category.
+Base every field on the website content and founder's description you are given. Where you have to infer (segments, competitors), make a sensible estimate from the product and category.
 Angles are pain points or everyday moments a customer would recognize, written for relatable meme-style posts on Instagram and TikTok, not polished ad copy.
 Tone rules should be concrete enough for a copywriter to follow.`;
 
-export async function generateBrandProfile(site: ScrapedSite): Promise<BrandProfile> {
+// `about` is the founder's own description, used alongside (or, for sites we
+// can't read, instead of) the scraped copy.
+export async function generateBrandProfile(site: ScrapedSite, about?: string): Promise<BrandProfile> {
   const products = site.products
     .map((p) => `- ${p.name}${p.price ? ` (${p.price})` : ""}: ${p.description?.slice(0, 300) ?? ""}`)
     .join("\n");
@@ -56,7 +58,7 @@ export async function generateBrandProfile(site: ScrapedSite): Promise<BrandProf
     prompt: `Website: ${site.url}
 Title: ${site.title}
 Meta description: ${site.metaDescription}
-
+${about ? `\nFounder's description (trust this over the page text):\n${about}\n` : ""}
 Products:
 ${products}
 

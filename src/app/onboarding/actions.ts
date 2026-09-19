@@ -1,30 +1,37 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getCurrentUser } from "@/lib/current-user";
 import { scrapeSite } from "@/lib/scrape";
 import { generateBrandProfile } from "@/lib/brand-profile";
 
 export type OnboardingState = { error: string | null };
 
 export async function buildBrandProfile(_prev: OnboardingState, formData: FormData): Promise<OnboardingState> {
-  const supabase = await createClient();
-  const { data: auth } = await supabase.auth.getUser();
-  if (!auth.user) redirect("/login");
+  const supabase = createAdminClient();
+  const me = await getCurrentUser();
 
   const website = String(formData.get("website") ?? "").trim();
   if (!website) return { error: "Paste your website or a product URL." };
+  const about = String(formData.get("about") ?? "").trim().slice(0, 2000);
 
   try {
     const site = await scrapeSite(website);
-    const profile = await generateBrandProfile(site);
+    if (site.thin && about.length < 40) {
+      return {
+        error:
+          "We couldn't read much from that site (it probably loads with JavaScript). Add a few sentences about what you sell and who buys it, then try again.",
+      };
+    }
+    const profile = await generateBrandProfile(site, about || undefined);
     const { angles, tone_dos, tone_donts, ...rest } = profile;
 
     const { data: brand, error } = await supabase
       .from("brands")
       .upsert(
         {
-          user_id: auth.user.id,
+          user_id: me.id,
           website_url: site.url,
           profile: rest,
           angles,
