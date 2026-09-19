@@ -150,6 +150,7 @@ function FactsLabel({
             <li key={a.title} className={`${thin} py-3`}>
               <p className="font-bold">{a.title}</p>
               <p className="text-ink-soft">{a.pain_point}</p>
+              {a.benefit && <p className="mt-1 text-leaf-deep">→ {a.benefit}</p>}
               <p className="mt-1 italic">&ldquo;{a.example_hook}&rdquo;</p>
             </li>
           ))}

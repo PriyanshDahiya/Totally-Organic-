@@ -10,7 +10,8 @@ import {
   type CalculateMetadataFunction,
 } from "remotion";
 import { FRAME, OverlayText } from "./text";
-import { type Backdrop, type FontId, type MemeLayer, type Music, type TextBox, type TextPosition } from "./style";
+import { ProductOverlay } from "./WallOfText";
+import { type Backdrop, type FontId, type MemeLayer, type Music, type ProductLayer, type TextBox, type TextPosition } from "./style";
 
 // Meme (green screen): a still photo for the vibe, the setup line at the
 // top, and a keyed reaction meme at the bottom delivering the punchline
@@ -26,6 +27,8 @@ export type MemeProps = {
   music: Music | null;
   font: FontId;
   textScale: number;
+  // The brand's product beside the meme.
+  product?: ProductLayer | null;
 };
 
 // The meme cut-out's box: the text owns the top (textPosition "top"), the
@@ -51,7 +54,7 @@ function memeBaseSize(lines: string[]) {
   return chars > 120 ? 54 : chars > 70 ? 60 : 68;
 }
 
-export function Meme({ lines, backdrop, meme, textPosition, textBox, music, font, textScale }: MemeProps) {
+export function Meme({ lines, backdrop, meme, textPosition, textBox, music, font, textScale, product }: MemeProps) {
   const frame = useCurrentFrame();
   const durationInFrames = memeDurationInFrames(lines, meme);
   // Slow push-in so the still doesn't feel frozen.
@@ -67,7 +70,8 @@ export function Meme({ lines, backdrop, meme, textPosition, textBox, music, font
       )}
       {/* A soft shade at the top keeps white text readable on bright photos. */}
       <AbsoluteFill style={{ background: "linear-gradient(to bottom, rgba(0,0,0,0.35), rgba(0,0,0,0) 45%)" }} />
-      {meme && <MemeClip meme={meme} durationInFrames={durationInFrames} />}
+      {meme && <MemeClip meme={meme} durationInFrames={durationInFrames} beside={!!product} />}
+      {product && <ProductOverlay product={product} />}
       {music && <Audio src={music.url} volume={0.35} loop />}
       <OverlayText
         lines={lines}
@@ -81,9 +85,11 @@ export function Meme({ lines, backdrop, meme, textPosition, textBox, music, font
   );
 }
 
-function MemeClip({ meme, durationInFrames }: { meme: MemeLayer; durationInFrames: number }) {
+function MemeClip({ meme, durationInFrames, beside }: { meme: MemeLayer; durationInFrames: number; beside: boolean }) {
   const frame = useCurrentFrame();
-  const scale = Math.min(MEME_BOX.maxWidth / meme.width, MEME_BOX.maxHeight / meme.height);
+  // With a product next to it, the meme takes the left ~60% of the frame.
+  const maxWidth = beside ? FRAME.width * 0.6 : MEME_BOX.maxWidth;
+  const scale = Math.min(maxWidth / meme.width, MEME_BOX.maxHeight / meme.height);
   const width = meme.width * scale;
   const height = meme.height * scale;
   // Pops up from below on the first frames.
@@ -99,7 +105,7 @@ function MemeClip({ meme, durationInFrames }: { meme: MemeLayer; durationInFrame
       data-meme-layer
       style={{
         position: "absolute",
-        left: (FRAME.width - width) / 2,
+        left: beside ? Math.max(24, FRAME.width * 0.33 - width / 2) : (FRAME.width - width) / 2,
         top: FRAME.height - MEME_BOX.bottom - height,
         width,
         height,

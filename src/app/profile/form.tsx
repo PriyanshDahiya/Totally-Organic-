@@ -78,7 +78,7 @@ export function ProfileForm({ initial }: { initial: Initial }) {
       <Panel className={section}>
         <div>
           <h2 className={heading}>Content angles</h2>
-          <p className="text-sm text-ink-soft">The three pain points every post is written around.</p>
+          <p className="text-sm text-ink-soft">The three pain points every post is written around, and what your product changes for each.</p>
         </div>
         {angles.map((a, i) => (
           <div key={i} className="space-y-2 rounded-xl border-2 border-dashed border-ink/30 p-4">
@@ -86,6 +86,9 @@ export function ProfileForm({ initial }: { initial: Initial }) {
               onChange={(e) => setAngle(i, { title: e.target.value })} />
             <textarea aria-label={`Angle ${i + 1} pain point`} rows={2} className={input} value={a.pain_point}
               onChange={(e) => setAngle(i, { pain_point: e.target.value })} />
+            <textarea aria-label={`Angle ${i + 1} benefit`} rows={2} className={input} value={a.benefit ?? ""}
+              placeholder="What your product changes here, e.g. Reels every day without hiring anyone"
+              onChange={(e) => setAngle(i, { benefit: e.target.value })} />
             <input aria-label={`Angle ${i + 1} example hook`} className={`${input} italic`} value={a.example_hook}
               onChange={(e) => setAngle(i, { example_hook: e.target.value })} />
           </div>

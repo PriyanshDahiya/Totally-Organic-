@@ -33,6 +33,7 @@ const PHRASES_PER_CARD = 6;
 // Share of Wall of Text cards that show the product, for brands with a
 // usable cutout: most, so posts sell, but not all, so the feed stays varied.
 const PRODUCT_SHARE = 0.8;
+const MEME_MENTION_ODDS = 0.6;
 // Rough share of each format before learning from swipes shifts it. Memes
 // need the meme library; slideshows need product photos.
 const FORMAT_WEIGHT: Record<Format, number> = { wall_of_text: 0.45, slideshow: 0.3, green_screen: 0.3 };
@@ -226,7 +227,7 @@ export async function generateCard(brandId: string, opts: { format?: Format } = 
   // Product in the shot (Wall of Text): chosen before writing, so the text
   // is about the product the video actually shows.
   let shotCutout: StoredCutout | null = null;
-  if (format === "wall_of_text" && Math.random() < PRODUCT_SHARE) {
+  if ((format === "wall_of_text" || format === "green_screen") && Math.random() < PRODUCT_SHARE) {
     const cutouts = await brandCutouts(brandId, brand.profile as Record<string, unknown>, products ?? []).catch((err) => {
       console.error("product cutouts failed", err);
       return [] as StoredCutout[];
@@ -253,8 +254,9 @@ export async function generateCard(brandId: string, opts: { format?: Format } = 
   if (jobError) throw jobError;
 
   try {
-    // Meme cards never name the brand on screen; the caption does.
-    const mentionBrand = format !== "green_screen" && Math.random() < MENTION_ODDS[brand.mention_frequency as keyof typeof MENTION_ODDS];
+    // Meme cards name the brand in most setups ("when your team is [brand]"),
+    // since a funny post nobody links to the brand doesn't sell.
+    const mentionBrand = Math.random() < (format === "green_screen" ? MEME_MENTION_ODDS : MENTION_ODDS[brand.mention_frequency as keyof typeof MENTION_ODDS]);
     const remix = await remixHook({
       brand: {
         name: profile.identity.name,
@@ -323,7 +325,13 @@ export async function generateCard(brandId: string, opts: { format?: Format } = 
       });
     }
 
-    if (shotCutout) style.product = placeProduct(shotCutout, faces);
+    if (shotCutout) {
+      style.product =
+        format === "green_screen"
+          ? // Beside the meme, which moves left to make room.
+            clampProduct({ url: shotCutout.url, aspect: shotCutout.width / shotCutout.height, x: 0.76, y: 0.64, width: 0.3 })
+          : placeProduct(shotCutout, faces);
+    }
 
     // Smart positioning: keep the text off faces and off the product.
     const obstacles: FaceBand[] = [...faces];

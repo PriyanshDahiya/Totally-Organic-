@@ -69,7 +69,9 @@ const RemixSchema = z.object({
         "Slideshow: 3-6 slides, one line each; the first slide is the hook, the rest pay it off.",
     ),
   caption: z.string().describe("Instagram caption: 1-2 casual sentences, then 3-5 relevant hashtags"),
-  why: z.string().describe("One sentence for the founder on why this post should work, naming the hook pattern"),
+  why: z
+    .string()
+    .describe("Two short sentences for the founder: why the moment hits emotionally, then how the post positions the product as the fix"),
   scene: z
     .string()
     .describe("Meme format only: a short stock-photo search for the backdrop that sets the joke's scene, e.g. 'messy desk laptop night' or 'office meeting room'. Empty for other formats."),
@@ -83,23 +85,28 @@ const RemixSchema = z.object({
 
 export type Remix = z.infer<typeof RemixSchema>;
 
-const SYSTEM_PROMPT = `You write short-form social posts for small direct-to-consumer brands by remixing hooks that are already trending.
+const SYSTEM_PROMPT = `You write short-form social posts for small direct-to-consumer brands by remixing posts that are already trending.
 
-You get one trending hook and one of the brand's content angles. Keep the hook's structure, rhythm and pattern (the "POV:", the "me at 10pm vs 6am" contrast, the list, the "the worst part about..." setup) and swap its subject for the angle's pain point, so it still reads like something a real person posted, not an ad.
+You get one trending hook and one of the brand's angles (a pain point and what the product changes about it). Keep the hook's exact structure and rhythm (the "POV:", the "when your X is Y", the "me after...", the "me at 10pm vs 6am" contrast, the list) and swap in the brand's world, so it still reads like something a real person posted, not an ad.
 
-You'll be told which of two styles to write:
-- Meme: one complete, relatable joke or moment that makes sense to someone who has never heard of the brand. Land the punchline on the pain point. Don't name or pitch the brand in the overlay; the caption does that.
-- Story: a first-person post from a real customer, 2-4 sentences. Open with the hook's structure, describe the pain honestly, and end by naming the brand and what it does for you, like a friend's recommendation. Only use what the brand's description says it does.
+The most important rule: write a specific moment, not a statement.
+- A moment is something the viewer has lived: a time, a place, an action, a thing someone said. "when you open the agency invoice at 11pm and it's more than your ad budget" is a moment. "agencies are too expensive" is a statement.
+- Statements, abstract nouns and marketing words kill posts. Never use: journey, game-changer, level up, unlock, elevate, hustle, grind, chase/chasing, seamless, effortless, transform, empower, revolutionary, "the struggle is real".
+- Short beats long. Every word has to earn its place. If a line works without a word, cut the word.
 
-Rules for both:
-- Write like a person typing a caption: normal sentence case, plain words. Write words out in full: no abbreviations like "2h", "u", "bc", "w/".
-- If you're given real customer phrases, echo their wording where it fits naturally: quote a phrase or build the joke on it. That's what makes a post feel written by a customer. Never attribute a quote to a named person.
+Posts sell by showing the product as the relief, the way a friend would, never like an ad:
+- You'll be told a style. Story: first-person, 2-4 sentences, the pain as a real moment, then the brand named near the end as what fixed it. Meme: one joke that lands on its own.
+- When told to name the brand, make the brand part of the joke or the payoff ("when your whole marketing team is [brand] and one store link", "me after switching to [brand]"), not a pitch tacked on.
+- Only claim what the brand's description and the angle's benefit say it does.
+
+Rules:
+- Write like a person typing a caption: normal sentence case, plain words, words written out in full (no "u", "bc", "w/", "2h").
+- If you're given real customer phrases, echo their wording where it fits: that's what makes a post feel written by a customer. Never attribute a quote to a named person.
 - If you're given posts the brand loves, match their rhythm, length and humour. Don't copy them.
-- If you're given a timely moment, tie the post to it only when it fits the pain point naturally; ignore it if it would feel forced.
-- Never stereotype or mock any religion, region, caste, community or gender.
-- Never mock or dismiss the kind of product the brand sells; the joke is about the pain point, not the category.
+- If you're given a timely moment, use it only when it fits naturally.
+- Never stereotype or mock any religion, region, caste, community or gender. Never mock the kind of product the brand sells.
 - Follow the brand's tone do's and don'ts exactly.
-- Never invent facts about the product: no prices, ingredients, stats, results or claims beyond what you're given. No medical or health claims.
+- Never invent facts: no prices, ingredients, stats, results or claims beyond what you're given. No medical or health claims.
 - No hashtags or emojis in the overlay lines; hashtags go in the caption only.
 - The caption may always mention the brand once.`;
 
@@ -145,17 +152,61 @@ function checkLimits(remix: Remix, format: Format): string | null {
   return null;
 }
 
-export async function remixHook(input: RemixInput): Promise<Remix> {
-  const { brand, angle, hook, mentionBrand, product } = input;
-  const format =
-    hook.format === "wall_of_text"
-      ? "Wall of Text (text over a background video)"
-      : hook.format === "slideshow"
-        ? "Slideshow (text over product photos, one line per slide)"
-        : `Meme (a short setup line on screen, then a famous reaction meme plays underneath as the punchline).
-Write only the setup: 1-2 short lines, under 150 characters, that make the meme's reaction land. Keep the hook's structure if it fits in that length; otherwise keep its spirit. Don't repeat or describe the meme's own line. Pick meme_id from this list:
-${input.memeMenu ?? ""}`;
+// Drafts per card: the judge picks the best, which beats taking the first
+// thing the model writes. Three keeps a card at ~4-6 calls on Groq's
+// free tier (30 requests a minute).
+const DRAFTS = 3;
 
+const JudgeSchema = z.object({
+  scores: z.array(
+    z.object({
+      n: z.number(),
+      lived_moment: z.number().describe("1-5: a specific moment the viewer has lived, not a general statement"),
+      funny: z.number().describe("1-5: would the target customer laugh or feel seen"),
+      product_link: z.number().describe("1-5: the post makes the brand or product feel like the relief, naturally"),
+      clean: z.number().describe("1-5: short, natural, no marketing words, reads like a real person"),
+    }),
+  ),
+  best: z.number().describe("Number of the best draft"),
+});
+
+function formatBrief(input: RemixInput) {
+  const { hook } = input;
+  if (hook.format === "wall_of_text") return "Wall of Text (text over a background video)";
+  if (hook.format === "slideshow") return "Slideshow (text over product photos, one line per slide)";
+  return `Meme (a short setup on screen, then a famous reaction meme plays underneath as the punchline).
+Write only the setup: 1-2 short lines, under 150 characters, that make the meme's reaction land. Keep the hook's structure; the meme is the reaction to the moment you describe. Don't repeat or describe the meme's own line.
+Pick meme_id from this list:
+${input.memeMenu ?? ""}`;
+}
+
+function styleBrief({ hook, mentionBrand, product, brand }: RemixInput) {
+  const name = product ? `${brand.name} (or "${product.name}")` : brand.name;
+  if (hook.format === "green_screen") {
+    return mentionBrand
+      ? `Style: branded meme. Name ${name} in the setup as part of the joke or the payoff, e.g. "when your whole Reels team is ${brand.name} and one store link" or "me after switching to ${brand.name}". Pick a meme whose reaction matches (smug, winning, relieved for a payoff; shocked or crying for the pain).`
+      : `Style: meme. Don't name the brand; make the moment one only ${brand.name}'s customers would recognise, so the product is implied.`;
+  }
+  return mentionBrand
+    ? `Style: story. Name ${name} once, near the end, as the thing that fixed it for you. No call to action ("try it", "link in bio").`
+    : "Style: meme. Do not name the brand or product in the overlay text.";
+}
+
+async function draft(input: RemixInput, prompt: string): Promise<Remix | null> {
+  let feedback = "";
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const remix = await generateObject({ name: "hook_remix", schema: RemixSchema, system: SYSTEM_PROMPT, prompt: prompt + feedback });
+    const problem = checkLimits(remix, input.hook.format);
+    if (!problem) return { ...remix, lines: cleanLines(remix.lines) };
+    feedback = `
+
+Your previous attempt broke a length rule: ${problem} Rewrite it shorter.`;
+  }
+  return null;
+}
+
+export async function remixHook(input: RemixInput): Promise<Remix> {
+  const { brand, angle, hook, product } = input;
   const prompt = `Brand: ${brand.name} — ${brand.one_liner} (${brand.category})
 Tone do's:
 ${brand.tone_dos.map((t) => `- ${t}`).join("\n")}
@@ -164,30 +215,33 @@ ${brand.tone_donts.map((t) => `- ${t}`).join("\n")}
 ${product ? `\nProduct shown in the post: ${product.name}${product.price ? ` (${product.price})` : ""}${product.description ? ` — ${product.description.slice(0, 300)}` : ""}\n` : ""}
 Angle: ${angle.title}
 Pain point: ${angle.pain_point}
-
-Trending hook to remix:
+${"benefit" in angle && angle.benefit ? `What the product changes: ${angle.benefit}\n` : ""}
+Trending post to remix (keep its structure):
 """${hook.text}"""
 
-Format: ${format}
+Format: ${formatBrief(input)}
 ${languageRule(input.language, input.culture)}${voiceBlock(input)}
-${
-    mentionBrand
-      ? `Style: story. Name ${product ? "the product or " : ""}the brand once, near the end, as the thing that fixed it for you. No call to action ("try it", "link in bio").`
-      : "Style: meme. Do not name the brand or product in the overlay text."
-  }`;
+${styleBrief(input)}`;
 
-  // Up to two rewrites: story posts sometimes overshoot on the first try.
-  let feedback = "";
-  for (let attempt = 0; attempt < 3; attempt++) {
-    const remix = await generateObject({
-      name: "hook_remix",
-      schema: RemixSchema,
-      system: SYSTEM_PROMPT,
-      prompt: prompt + feedback,
-    });
-    const problem = checkLimits(remix, hook.format);
-    if (!problem) return { ...remix, lines: cleanLines(remix.lines) };
-    feedback = `\n\nYour previous attempt broke a length rule: ${problem} Rewrite it shorter.`;
-  }
-  throw new Error("The AI couldn't fit this post into the length limits. Try regenerating.");
+  const drafts = (await Promise.all(Array.from({ length: DRAFTS }, () => draft(input, prompt).catch(() => null)))).filter(
+    (d): d is Remix => d !== null,
+  );
+  if (drafts.length === 0) throw new Error("The AI couldn't write this post. Try regenerating.");
+  if (drafts.length === 1) return drafts[0];
+
+  // The judge sees only the on-screen text (and the meme picked), like a viewer would.
+  const judged = await generateObject({
+    name: "hook_judge",
+    schema: JudgeSchema,
+    system:
+      "You're a sharp social media editor for small D2C brands. You score draft Reels for the brand's target customer and pick the one most likely to be watched, shared and remembered with the brand. Be strict: generic statements and marketing language score low.",
+    prompt: `Brand: ${brand.name} — ${brand.one_liner}
+Angle: ${angle.pain_point}
+
+${drafts
+  .map((d, i) => `Draft ${i + 1}:\n${d.lines.join("\n")}${hook.format === "green_screen" ? `\n[meme: ${d.meme_id}]` : ""}`)
+  .join("\n\n")}`,
+  }).catch(() => null);
+  const best = judged ? drafts[judged.best - 1] : null;
+  return best ?? drafts[0];
 }

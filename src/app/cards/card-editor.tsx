@@ -98,7 +98,7 @@ export function CardEditor({ card, onClose, onSaved }: { card: DoneCard; onClose
       textScale: scale,
       background,
       slideImages: card.format === "slideshow" ? slideImages : null,
-      product: card.format === "wall_of_text" ? product : null,
+      product: card.format === "slideshow" ? null : product,
       memeId: card.format === "green_screen" ? (meme?.id ?? null) : null,
     });
     setSaving(false);
@@ -230,7 +230,7 @@ export function CardEditor({ card, onClose, onSaved }: { card: DoneCard; onClose
               </div>
             </section>
 
-            {card.format === "wall_of_text" && <ProductPicker product={product} onChange={setProduct} />}
+            {card.format !== "slideshow" && <ProductPicker product={product} onChange={setProduct} />}
 
             {card.format === "green_screen" ? (
               <MemePicker current={meme} onPick={setMeme} />

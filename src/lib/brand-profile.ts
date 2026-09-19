@@ -26,8 +26,9 @@ export const BrandProfileSchema = z.object({
   angles: z
     .array(
       z.object({
-        title: z.string(),
+        title: z.string().describe("Short name for the angle, framed as what the product gives, e.g. 'Reels without a team'"),
         pain_point: z.string().describe("The everyday frustration this angle speaks to"),
+        benefit: z.string().describe("What the product changes for the customer here, concretely, in one sentence"),
         example_hook: z.string().describe("One short, relatable meme-style line, not ad copy"),
       }),
     )

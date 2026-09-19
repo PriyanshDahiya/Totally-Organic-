@@ -85,7 +85,7 @@ export function WallOfText({
 // The product cutout: pops in over the first few frames (it's visible on
 // frame 0, which is the thumbnail), then floats gently so it feels placed in
 // the scene rather than pasted on.
-function ProductOverlay({ product }: { product: ProductLayer }) {
+export function ProductOverlay({ product }: { product: ProductLayer }) {
   const frame = useCurrentFrame();
   const width = product.width * FRAME.width;
   const height = width / (product.aspect || 1);

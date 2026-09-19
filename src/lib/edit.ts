@@ -129,7 +129,7 @@ export async function saveCardEdit(jobId: string, userId: string, input: unknown
       job.format === "slideshow" && edit.slideImages?.length
         ? edit.slideImages.filter((u) => job.products?.image_urls.includes(u))
         : null,
-    product: job.format === "wall_of_text" && edit.product ? clampProduct(edit.product) : null,
+    product: job.format !== "slideshow" && edit.product ? clampProduct(edit.product) : null,
   };
   if (job.format === "green_screen" && edit.memeId != null) {
     const meme = memeById(edit.memeId);

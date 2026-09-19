@@ -17,7 +17,7 @@ const lines = z.array(z.string().trim().max(200)).transform((l) => l.filter(Bool
 const ProfileEditSchema = z.object({
   identity: z.object({ name: text(80), one_liner: text(200), category: text(60) }),
   angles: z
-    .array(z.object({ title: text(100), pain_point: text(300), example_hook: text(200) }))
+    .array(z.object({ title: text(100), pain_point: text(300), benefit: text(300).optional().default(""), example_hook: text(200) }))
     .length(3, "Keep exactly 3 angles."),
   segments: z
     .array(z.object({ name: text(80), share_percent: z.number({ error: "Give every customer segment a share." }).int().min(0).max(100), description: text(300) }))
