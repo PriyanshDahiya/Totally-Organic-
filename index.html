@@ -1,0 +1,480 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Totally Organic — Reels for D2C brands, grown daily</title>
+<meta name="description" content="Paste your store link. Get a feed of ready-to-post Reels that remix trending hooks onto your customers' real problems, with your product in the shot. Swipe to keep. Built for Indian D2C brands.">
+<meta property="og:title" content="Totally Organic — Reels for D2C brands, grown daily">
+<meta property="og:description" content="Swipe through ready-made Reels written around your customers' problems, in English or Hinglish, with your product in the shot.">
+<meta property="og:type" content="website">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='15' fill='%23f1c24a' stroke='%231d1b17' stroke-width='2'/><path d='M9 22c0-8 5-13 14-13-1 9-5 14-13 14' fill='%232d6a3e' stroke='%231d1b17' stroke-width='1.8'/></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --paper: #f3ecdf; --paper-deep: #e8dcc7; --card: #fbf8f2;
+    --ink: #1d1b17; --ink-soft: #5c574d; --ink-faint: #8f887a; --rule: #cfc3ad;
+    --leaf: #2d6a3e; --leaf-deep: #1f4d2c; --leaf-wash: #dfe9d6;
+    --tomato: #d4452a; --tomato-wash: #f6ddd4; --yolk: #f1c24a;
+    --lift: 3px 3px 0 var(--ink);
+    --display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, monospace;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  html, body { overflow-x: clip; }
+  body {
+    margin: 0; color: var(--ink); font-family: var(--display); font-size: 17px; line-height: 1.55;
+    background-color: var(--paper);
+    background-image: radial-gradient(rgb(29 27 23 / .045) 1px, transparent 1px), radial-gradient(rgb(29 27 23 / .03) 1px, transparent 1px);
+    background-size: 22px 22px, 31px 31px; background-position: 0 0, 11px 7px;
+  }
+  ::selection { background: var(--yolk); }
+  a { color: inherit; }
+  img, video { display: block; max-width: 100%; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 20px; }
+  .mono { font-family: var(--mono); font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+  .soft { color: var(--ink-soft); }
+
+  /* Header */
+  header { position: sticky; top: 0; z-index: 20; background: var(--paper); border-bottom: 2px solid var(--ink); }
+  header .wrap { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 12px; padding-bottom: 12px; }
+  .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; font-weight: 800; font-size: 20px; letter-spacing: -.01em; }
+  .brand sup { color: var(--tomato); }
+  nav { display: flex; gap: 4px; align-items: center; }
+  nav a.link { text-decoration: none; font-weight: 600; font-size: 15px; padding: 6px 12px; border-radius: 999px; border: 2px solid transparent; color: var(--ink-soft); }
+  nav a.link:hover { border-color: var(--ink); color: var(--ink); }
+  @media (max-width: 720px) { nav a.link { display: none; } }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;
+    font: 700 16px var(--display); text-decoration: none; padding: 12px 20px; border-radius: 12px;
+    border: 2px solid var(--ink); background: var(--leaf); color: var(--card); box-shadow: var(--lift);
+    transition: transform .12s, box-shadow .12s;
+  }
+  .btn:hover { transform: translate(-1px, -1px); box-shadow: 4px 4px 0 var(--ink); }
+  .btn:active { transform: translate(2px, 2px); box-shadow: 1px 1px 0 var(--ink); }
+  .btn.ghost { background: var(--card); color: var(--ink); }
+  .btn.small { padding: 8px 14px; font-size: 14px; }
+
+  .sticker {
+    display: inline-block; font: 700 12px var(--mono); letter-spacing: .12em; text-transform: uppercase;
+    padding: 6px 12px; border: 2px solid var(--ink); border-radius: 999px; background: var(--leaf-wash);
+    box-shadow: 0 1px 0 rgb(29 27 23 / .9), 0 3px 0 rgb(29 27 23 / .12);
+  }
+  .sticker.tomato { background: var(--tomato-wash); }
+  .sticker.yolk { background: var(--yolk); }
+
+  /* Hero */
+  .hero { display: grid; grid-template-columns: 1.15fr .85fr; gap: 48px; align-items: center; padding: 64px 0 72px; }
+  @media (max-width: 860px) { .hero { grid-template-columns: 1fr; padding-top: 40px; } }
+  h1 { font-size: clamp(2.8rem, 7.4vw, 5.8rem); line-height: .92; letter-spacing: -.03em; font-weight: 800; margin: 22px 0 0; }
+  h1 .leaf { color: var(--leaf); }
+  h1 .star { color: var(--tomato); }
+  .lede { font-size: 20px; max-width: 34em; color: var(--ink-soft); margin: 24px 0 0; }
+  .cta-row { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 30px; align-items: center; }
+  .fine { font-size: 14px; color: var(--ink-faint); margin-top: 26px; }
+  .fine .star { color: var(--tomato); }
+
+  .phone-stack { position: relative; height: 560px; }
+  .phone {
+    position: absolute; width: 250px; aspect-ratio: 9/16; border-radius: 30px; overflow: hidden;
+    border: 3px solid var(--ink); background: var(--ink); box-shadow: 6px 6px 0 var(--ink);
+  }
+  .phone video { width: 100%; height: 100%; object-fit: cover; }
+  .phone.a { left: 50%; top: 0; transform: translateX(-62%) rotate(-4deg); z-index: 2; }
+  .phone.b { left: 50%; top: 70px; transform: translateX(8%) rotate(5deg); z-index: 1; }
+  .phone .tag { position: absolute; left: 12px; top: 12px; }
+  .stamp {
+    position: absolute; right: 2%; bottom: 20px; z-index: 3; width: 128px; height: 128px; border-radius: 50%;
+    border: 3px double var(--tomato); color: var(--tomato); display: grid; place-items: center; text-align: center;
+    font: 700 13px/1.25 var(--mono); letter-spacing: .08em; text-transform: uppercase; transform: rotate(-12deg);
+    background: rgb(251 248 242 / .85);
+  }
+  @media (max-width: 860px) {
+    .phone-stack { height: 470px; }
+    .phone { width: 210px; }
+    .stamp { right: 0; width: 108px; height: 108px; font-size: 11px; }
+  }
+
+  /* Sections */
+  section { padding: 76px 0; }
+  .band { border-top: 2px solid var(--ink); border-bottom: 2px solid var(--ink); background: var(--card); }
+  h2 { font-size: clamp(2rem, 4.6vw, 3.3rem); line-height: 1; letter-spacing: -.025em; font-weight: 800; margin: 12px 0 0; }
+  .kicker { color: var(--leaf); }
+  .intro { max-width: 40em; margin-top: 16px; color: var(--ink-soft); font-size: 18px; }
+
+  .ticker { overflow: hidden; border-bottom: 2px solid var(--ink); background: var(--yolk); white-space: nowrap; }
+  .ticker div { display: inline-block; padding: 10px 0; animation: tick 38s linear infinite; font: 700 13px var(--mono); letter-spacing: .12em; text-transform: uppercase; }
+  .ticker span { margin: 0 22px; }
+  @keyframes tick { to { transform: translateX(-50%); } }
+  @media (prefers-reduced-motion: reduce) { .ticker div { animation: none; } }
+
+  .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin-top: 40px; }
+  @media (max-width: 860px) { .steps { grid-template-columns: 1fr; } }
+  .panel { background: var(--card); border: 2px solid var(--ink); border-radius: 18px; padding: 26px; box-shadow: var(--lift); }
+  .step .n { font: 800 44px var(--display); color: var(--leaf); line-height: 1; }
+  .step h3 { font-size: 23px; margin: 14px 0 8px; letter-spacing: -.01em; }
+  .step p { margin: 0 0 16px; color: var(--ink-soft); }
+
+  .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; margin-top: 40px; border: 2px solid var(--ink); border-radius: 18px; overflow: hidden; background: var(--card); }
+  @media (max-width: 860px) { .features { grid-template-columns: 1fr; } }
+  .feature { padding: 26px; border-right: 2px solid var(--ink); border-bottom: 2px solid var(--ink); }
+  .feature:nth-child(3n) { border-right: 0; }
+  .feature:nth-last-child(-n+3) { border-bottom: 0; }
+  @media (max-width: 860px) { .feature { border-right: 0; border-bottom: 2px solid var(--ink) !important; } .feature:last-child { border-bottom: 0 !important; } }
+  .feature .icon { font-size: 28px; }
+  .feature h3 { font-size: 20px; margin: 10px 0 6px; }
+  .feature p { margin: 0; color: var(--ink-soft); font-size: 16px; }
+
+  .samples { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-top: 40px; }
+  @media (max-width: 860px) { .samples { grid-template-columns: repeat(2, 1fr); } }
+  .sample { border: 2px solid var(--ink); border-radius: 20px; overflow: hidden; background: var(--ink); box-shadow: var(--lift); aspect-ratio: 9/16; position: relative; }
+  .sample video { width: 100%; height: 100%; object-fit: cover; }
+  .sample .label { position: absolute; left: 10px; bottom: 10px; }
+  .note { font-size: 14px; color: var(--ink-faint); margin-top: 18px; }
+
+  /* Pricing */
+  .toggle { display: inline-flex; margin-top: 26px; border: 2px solid var(--ink); border-radius: 999px; background: var(--card); padding: 3px; }
+  .toggle button { font: 700 14px var(--display); border: 0; background: none; padding: 8px 16px; border-radius: 999px; cursor: pointer; color: var(--ink-soft); }
+  .toggle button[aria-pressed="true"] { background: var(--ink); color: var(--card); }
+  .plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; margin-top: 30px; align-items: stretch; }
+  @media (max-width: 860px) { .plans { grid-template-columns: 1fr; } }
+  .plan { position: relative; display: flex; flex-direction: column; }
+  .plan.best { background: var(--leaf-wash); transform: translateY(-8px); }
+  @media (max-width: 860px) { .plan.best { transform: none; } }
+  .plan .ribbon { position: absolute; top: -14px; right: 18px; }
+  .plan h3 { font-size: 26px; margin: 0; }
+  .plan .for { color: var(--ink-soft); margin: 4px 0 18px; font-size: 15px; }
+  .price { font-size: 46px; font-weight: 800; letter-spacing: -.02em; line-height: 1; }
+  .price small { font-size: 16px; font-weight: 600; color: var(--ink-soft); letter-spacing: 0; }
+  .was { font: 600 14px var(--mono); color: var(--ink-faint); text-decoration: line-through; margin-top: 8px; min-height: 20px; }
+  .plan ul { list-style: none; padding: 0; margin: 20px 0 24px; flex: 1; }
+  .plan li { padding: 7px 0 7px 28px; position: relative; border-top: 1px dashed var(--rule); font-size: 16px; }
+  .plan li::before { content: "✓"; position: absolute; left: 4px; color: var(--leaf); font-weight: 800; }
+  .coupon {
+    margin-top: 34px; border: 2px dashed var(--ink); border-radius: 16px; padding: 18px 22px; background: var(--yolk);
+    display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; justify-content: space-between;
+  }
+  .coupon strong { font-size: 20px; }
+
+  /* Waitlist */
+  .join { display: grid; grid-template-columns: .9fr 1.1fr; gap: 40px; align-items: start; }
+  @media (max-width: 860px) { .join { grid-template-columns: 1fr; } }
+  form .row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  @media (max-width: 560px) { form .row { grid-template-columns: 1fr; } }
+  label.f { display: block; margin-bottom: 14px; }
+  label.f span { display: block; margin-bottom: 6px; color: var(--ink-soft); }
+  input[type=text], input[type=email], input[type=url], input[type=tel], select {
+    width: 100%; font: 500 16px var(--display); padding: 12px 14px; border: 2px solid var(--ink); border-radius: 12px; background: #fff; color: var(--ink);
+  }
+  input:focus, select:focus { outline: 3px solid var(--yolk); outline-offset: 1px; }
+  .check { display: flex; gap: 10px; align-items: flex-start; margin: 4px 0 18px; font-size: 16px; }
+  .check input { width: 20px; height: 20px; accent-color: var(--leaf); margin-top: 3px; }
+  .msg { margin-top: 14px; padding: 12px 14px; border-radius: 12px; border: 2px solid var(--ink); display: none; }
+  .msg.ok { display: block; background: var(--leaf-wash); }
+  .msg.err { display: block; background: var(--tomato-wash); }
+  .perks { list-style: none; padding: 0; margin: 22px 0 0; }
+  .perks li { display: flex; gap: 12px; padding: 10px 0; border-top: 2px dashed var(--rule); }
+  .perks b { font-family: var(--mono); color: var(--leaf); }
+
+  /* FAQ */
+  details { border-top: 2px solid var(--ink); padding: 18px 4px; }
+  details:last-child { border-bottom: 2px solid var(--ink); }
+  summary { cursor: pointer; font-weight: 700; font-size: 19px; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
+  summary::after { content: "+"; font-family: var(--mono); font-size: 22px; line-height: 1; }
+  details[open] summary::after { content: "–"; }
+  details p { margin: 12px 0 0; color: var(--ink-soft); max-width: 50em; }
+
+  footer { border-top: 2px solid var(--ink); padding: 34px 0 44px; }
+  footer .wrap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px; align-items: center; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <a href="#top" class="brand" aria-label="Totally Organic home">
+      <svg viewBox="0 0 32 32" width="30" height="30" aria-hidden="true"><circle cx="16" cy="16" r="15" fill="#f1c24a" stroke="#1d1b17" stroke-width="2"/><path d="M9 22c0-8 5-13 14-13-1 9-5 14-13 14" fill="#2d6a3e" stroke="#1d1b17" stroke-width="1.8" stroke-linejoin="round"/><path d="M10 22c3-4 6-7 10-10" fill="none" stroke="#1d1b17" stroke-width="1.5" stroke-linecap="round"/></svg>
+      <span>Totally Organic<sup>*</sup></span>
+    </a>
+    <nav>
+      <a class="link" href="#how">How it works</a>
+      <a class="link" href="#samples">Samples</a>
+      <a class="link" href="#pricing">Pricing</a>
+      <a class="btn small" href="#join">Join the waitlist</a>
+    </nav>
+  </div>
+</header>
+
+<div class="ticker" aria-hidden="true"><div>
+  <span>Trending hooks, remixed</span><span>✺</span><span>English or Hinglish</span><span>✺</span><span>Your product in the shot</span><span>✺</span><span>Swipe right to keep</span><span>✺</span><span>No AI avatars</span><span>✺</span><span>Pay only for posts you keep</span><span>✺</span>
+  <span>Trending hooks, remixed</span><span>✺</span><span>English or Hinglish</span><span>✺</span><span>Your product in the shot</span><span>✺</span><span>Swipe right to keep</span><span>✺</span><span>No AI avatars</span><span>✺</span><span>Pay only for posts you keep</span><span>✺</span>
+</div></div>
+
+<main id="top">
+  <div class="wrap hero">
+    <div>
+      <span class="sticker">Short-form for D2C brands · Early access</span>
+      <h1>Organic content<span class="star">*</span><br><span class="leaf">grown daily.</span></h1>
+      <p class="lede">Paste your store link. Get a feed of ready-to-post Reels that remix what's already trending onto your customers' real problems, with your product right in the shot. Swipe right on the good ones. Post.</p>
+      <div class="cta-row">
+        <a class="btn" href="#join">Get early access →</a>
+        <a class="btn ghost" href="#join" data-call>Book a 15-min demo</a>
+      </div>
+      <p class="fine"><span class="star">*</span> Not organic. Made by a machine in a few seconds. Looks like a real person posted it, which is the point.</p>
+    </div>
+    <div class="phone-stack" aria-label="Example posts made by Totally Organic">
+      <div class="phone a">
+        <video src="https://xssklnxdtqvvkgxvoyve.supabase.co/storage/v1/object/public/renders/9ca607f6-3baa-44fc-a0c3-5f8753da4190/b11caec8-d3de-4fe8-a378-7a577e987f49-1789753147440.mp4" poster="https://xssklnxdtqvvkgxvoyve.supabase.co/storage/v1/object/public/renders/9ca607f6-3baa-44fc-a0c3-5f8753da4190/b11caec8-d3de-4fe8-a378-7a577e987f49-1789753147440.jpg" autoplay muted loop playsinline preload="metadata"></video>
+      </div>
+      <div class="phone b">
+        <video src="https://xssklnxdtqvvkgxvoyve.supabase.co/storage/v1/object/public/renders/9ca607f6-3baa-44fc-a0c3-5f8753da4190/0ac9eda0-b83c-4744-9138-d46f3a5d6dae-1789752953961.mp4" poster="https://xssklnxdtqvvkgxvoyve.supabase.co/storage/v1/object/public/renders/9ca607f6-3baa-44fc-a0c3-5f8753da4190/0ac9eda0-b83c-4744-9138-d46f3a5d6dae-1789752953961.jpg" autoplay muted loop playsinline preload="metadata"></video>
+      </div>
+      <div class="stamp">Made in<br>~4 sec<br>by a machine</div>
+    </div>
+  </div>
+
+  <section class="band" id="how">
+    <div class="wrap">
+      <p class="mono kicker">How it works</p>
+      <h2>From store link to Reel in three steps.</h2>
+      <p class="intro">No filming, no editor, no content calendar meeting. You pick; the machine does the rest.</p>
+      <div class="steps">
+        <div class="panel step">
+          <div class="n">01</div>
+          <h3>Plant your website</h3>
+          <p>Paste your Shopify or store link. We read it and work out your customers, their pain points, your products and your tone. You can edit all of it.</p>
+          <span class="sticker">About 20 seconds</span>
+        </div>
+        <div class="panel step">
+          <div class="n">02</div>
+          <h3>Swipe the harvest</h3>
+          <p>A feed of posts built on hooks already trending on Reels, rewritten around your angles and set over real-looking footage. Swipe left on the misses, for free.</p>
+          <span class="sticker yolk">Free to browse</span>
+        </div>
+        <div class="panel step">
+          <div class="n">03</div>
+          <h3>Ship the keepers</h3>
+          <p>Swipe right and we render the final vertical video, ready for Instagram. Tweak the text, font, footage or product placement first if you like.</p>
+          <span class="sticker tomato">1 credit per video</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <p class="mono kicker">What's in the box</p>
+      <h2>Content that sounds like your customers, not like an ad.</h2>
+      <div class="features">
+        <div class="feature"><div class="icon">🔥</div><h3>Trending hooks, remixed</h3><p>We track the hook formats doing numbers on Reels and rewrite them around your product's real problem, so posts ride what's already working.</p></div>
+        <div class="feature"><div class="icon">🗣️</div><h3>English or Hinglish</h3><p>Written the way your customers actually text: "mummy ne bola tha", chai breaks, salary day, festival season. Or plain English if that's your brand.</p></div>
+        <div class="feature"><div class="icon">🧴</div><h3>Your product in the shot</h3><p>Your product floats right in the video, cut out from your own photos. Drag it, resize it, or hide it for a softer post.</p></div>
+        <div class="feature"><div class="icon">💬</div><h3>Your customers' own words</h3><p>We pull the phrases real buyers use in reviews and build the jokes around them. That's what makes a post feel like it came from a customer.</p></div>
+        <div class="feature"><div class="icon">🎞️</div><h3>Two formats that work</h3><p>Wall of Text over footage that matches the mood, and product-photo slideshows. Faces are detected so text never covers them.</p></div>
+        <div class="feature"><div class="icon">📈</div><h3>Learns your taste</h3><p>Every swipe teaches it which angles and styles you like, so the feed gets better the more you use it.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="samples">
+    <div class="wrap">
+      <p class="mono kicker">Straight out of the machine</p>
+      <h2>Real posts, zero editing.</h2>
+      <p class="intro">These were generated for a fitness app we work with, exactly as they came out. Yours would be written around your product and customers.</p>
+      <div class="samples">
+        <div class="sample"><video src="https://xssklnxdtqvvkgxvoyve.supabase.co/storage/v1/object/public/renders/9ca607f6-3baa-44fc-a0c3-5f8753da4190/1cff1f58-b1eb-4eeb-8977-42d179f530ee-1789752993063.mp4" poster="https://xssklnxdtqvvkgxvoyve.supabase.co/storage/v1/object/public/renders/9ca607f6-3baa-44fc-a0c3-5f8753da4190/1cff1f58-b1eb-4eeb-8977-42d179f530ee-1789752993063.jpg" muted loop playsinline preload="none"></video><span class="sticker label">Meme</span></div>
+        <div class="sample"><video src="https://xssklnxdtqvvkgxvoyve.supabase.co/storage/v1/object/public/renders/9ca607f6-3baa-44fc-a0c3-5f8753da4190/85f0385f-9ae8-4bd3-a874-41765c319d33-1789807931223.mp4" poster="https://xssklnxdtqvvkgxvoyve.supabase.co/storage/v1/object/public/renders/9ca607f6-3baa-44fc-a0c3-5f8753da4190/85f0385f-9ae8-4bd3-a874-41765c319d33-1789807931223.jpg" muted loop playsinline preload="none"></video><span class="sticker label yolk">Expectation vs reality</span></div>
+        <div class="sample"><video src="https://xssklnxdtqvvkgxvoyve.supabase.co/storage/v1/object/public/renders/9ca607f6-3baa-44fc-a0c3-5f8753da4190/2af5f3cd-c508-4641-a1e0-421b1d540621-1789806765444.mp4" poster="https://xssklnxdtqvvkgxvoyve.supabase.co/storage/v1/object/public/renders/9ca607f6-3baa-44fc-a0c3-5f8753da4190/2af5f3cd-c508-4641-a1e0-421b1d540621-1789806765444.jpg" muted loop playsinline preload="none"></video><span class="sticker label tomato">Hinglish story</span></div>
+        <div class="sample"><video src="https://xssklnxdtqvvkgxvoyve.supabase.co/storage/v1/object/public/renders/9ca607f6-3baa-44fc-a0c3-5f8753da4190/7c246d98-1c29-4d1b-a96f-36bc85e29372-1789807988909.mp4" poster="https://xssklnxdtqvvkgxvoyve.supabase.co/storage/v1/object/public/renders/9ca607f6-3baa-44fc-a0c3-5f8753da4190/7c246d98-1c29-4d1b-a96f-36bc85e29372-1789807988909.jpg" muted loop playsinline preload="none"></video><span class="sticker label">Unpopular opinion</span></div>
+      </div>
+      <p class="note">Hover or tap a post to play it.</p>
+    </div>
+  </section>
+
+  <section id="pricing">
+    <div class="wrap">
+      <p class="mono kicker">Pricing</p>
+      <h2>Swiping is free. You only pay for posts you keep.</h2>
+      <p class="intro">One credit = one finished video. Unlimited browsing, editing and regenerating on every plan. Cancel anytime.</p>
+      <div class="toggle" role="group" aria-label="Billing period">
+        <button type="button" data-period="monthly" aria-pressed="true">Monthly</button>
+        <button type="button" data-period="yearly" aria-pressed="false">Yearly · 2 months free</button>
+      </div>
+      <div class="plans">
+        <div class="panel plan">
+          <h3>Seed</h3>
+          <p class="for">For founders testing short-form</p>
+          <div class="price" data-m="1,499" data-y="1,249">₹1,499<small> /month</small></div>
+          <div class="was" data-y-note="Billed ₹14,990 yearly"></div>
+          <ul>
+            <li>20 videos a month</li>
+            <li>Unlimited swipes and edits</li>
+            <li>Wall of Text + Slideshow</li>
+            <li>English or Hinglish</li>
+            <li>1 brand</li>
+          </ul>
+          <a class="btn ghost" href="#join" data-plan="Seed">Join the waitlist</a>
+        </div>
+        <div class="panel plan best">
+          <span class="sticker yolk ribbon">Most popular</span>
+          <h3>Sprout</h3>
+          <p class="for">Post daily without thinking about it</p>
+          <div class="price" data-m="2,999" data-y="2,499">₹2,999<small> /month</small></div>
+          <div class="was" data-y-note="Billed ₹29,990 yearly"></div>
+          <ul>
+            <li>60 videos a month</li>
+            <li>Everything in Seed</li>
+            <li>Your product in the shot</li>
+            <li>Upload your own footage</li>
+            <li>Auto-posting to Instagram</li>
+          </ul>
+          <a class="btn" href="#join" data-plan="Sprout">Join the waitlist</a>
+        </div>
+        <div class="panel plan">
+          <h3>Harvest</h3>
+          <p class="for">For brands with multiple product lines</p>
+          <div class="price" data-m="5,999" data-y="4,999">₹5,999<small> /month</small></div>
+          <div class="was" data-y-note="Billed ₹59,990 yearly"></div>
+          <ul>
+            <li>150 videos a month</li>
+            <li>Everything in Sprout</li>
+            <li>Priority rendering</li>
+            <li>Content calendar & scheduling</li>
+            <li>WhatsApp support from the founders</li>
+          </ul>
+          <a class="btn ghost" href="#join" data-plan="Harvest">Join the waitlist</a>
+        </div>
+      </div>
+      <div class="coupon">
+        <div><span class="mono">Founding brands</span><br><strong>First 50 brands on the waitlist get 50% off for their first 3 months.</strong></div>
+        <a class="btn" href="#join">Claim a spot →</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="band" id="join">
+    <div class="wrap join">
+      <div>
+        <p class="mono kicker">Early access</p>
+        <h2>Get your first posts before launch.</h2>
+        <p class="intro">We're onboarding a small batch of D2C brands by hand. Join the list, or ask for a 15-minute demo and we'll make a few posts for your brand live on the call.</p>
+        <ul class="perks">
+          <li><b>01</b><span>Free early access during the beta</span></li>
+          <li><b>02</b><span>50% off your first 3 months after launch</span></li>
+          <li><b>03</b><span>A direct line to the founders; your feedback shapes the product</span></li>
+        </ul>
+      </div>
+      <form class="panel" id="waitlist" novalidate>
+        <div class="row">
+          <label class="f"><span>Your name</span><input type="text" name="name" required autocomplete="name" maxlength="100"></label>
+          <label class="f"><span>Work email</span><input type="email" name="email" required autocomplete="email" maxlength="200"></label>
+        </div>
+        <label class="f"><span>Your store or Instagram link</span><input type="url" name="website" placeholder="https://yourbrand.com" maxlength="300"></label>
+        <div class="row">
+          <label class="f"><span>What do you sell?</span>
+            <select name="category">
+              <option value="">Pick one</option>
+              <option>Skincare & beauty</option><option>Personal care & grooming</option><option>Food & beverages</option>
+              <option>Health & wellness</option><option>Fashion & accessories</option><option>Home & kitchen</option>
+              <option>Pets</option><option>Other</option>
+            </select>
+          </label>
+          <label class="f"><span>WhatsApp number (optional)</span><input type="tel" name="phone" autocomplete="tel" maxlength="20"></label>
+        </div>
+        <label class="check"><input type="checkbox" name="wants_call" id="wants-call"><span>I'd like a 15-minute demo call</span></label>
+        <input type="hidden" name="plan">
+        <button class="btn" type="submit" style="width:100%">Join the waitlist →</button>
+        <div class="msg" role="status" aria-live="polite"></div>
+      </form>
+    </div>
+  </section>
+
+  <section>
+    <div class="wrap">
+      <p class="mono kicker">Questions</p>
+      <h2>Fair questions.</h2>
+      <div style="margin-top:34px">
+        <details><summary>Is this AI avatars or fake influencers?</summary><p>No. No AI people, no synthetic video. Posts are text overlays on real stock footage or your own clips and product photos: the format that already works for brands on Reels.</p></details>
+        <details><summary>Do you repost other creators' videos?</summary><p>Never. We borrow the structure of trending hooks (the "POV:", the "what people think I do vs what I do"), not anyone's video. Footage comes from licensed stock or your own media.</p></details>
+        <details><summary>What's a credit?</summary><p>One credit is one finished, downloadable video. Browsing the feed, editing text, swapping footage and regenerating ideas are all free. If a render ever fails, the credit comes back automatically.</p></details>
+        <details><summary>Will it know my brand's tone?</summary><p>It reads your website to start, and you can edit everything: your customers, their pain points, your tone do's and don'ts, even example posts you love. It also learns from what you swipe.</p></details>
+        <details><summary>Does it post to Instagram for me?</summary><p>Auto-posting to Instagram is coming with launch. During early access you download the videos and post them yourself (it takes seconds).</p></details>
+        <details><summary>Who is this for?</summary><p>Indian D2C and Shopify brands that know they should be posting Reels every day but don't have a content team: skincare, grooming, food, wellness, fashion, home and pet brands.</p></details>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <a href="#top" class="brand"><span>Totally Organic<sup>*</sup></span></a>
+    <span class="soft" style="font-size:14px">Made in India for brands that would rather be shipping product than editing Reels.</span>
+  </div>
+</footer>
+
+<script>
+  // Waitlist entries go straight into Supabase (insert-only for the public key).
+  const SUPABASE_URL = "https://xssklnxdtqvvkgxvoyve.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inhzc2tsbnhkdHF2dmtneHZveXZlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3NDEwNDMsImV4cCI6MjEwNTMxNzA0M30.jMuc5l8OiKHl8NqoRwAqQY8flW0abnTpPjr0gINrezM";
+
+  // Sample videos play on hover (desktop) or tap (phones).
+  document.querySelectorAll(".sample video").forEach((v) => {
+    const play = () => v.play().catch(() => {});
+    v.parentElement.addEventListener("mouseenter", play);
+    v.parentElement.addEventListener("mouseleave", () => v.pause());
+    v.parentElement.addEventListener("click", () => (v.paused ? play() : v.pause()));
+  });
+
+  // Monthly / yearly toggle.
+  document.querySelectorAll(".toggle button").forEach((b) =>
+    b.addEventListener("click", () => {
+      const yearly = b.dataset.period === "yearly";
+      document.querySelectorAll(".toggle button").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+      document.querySelectorAll(".price").forEach((p) => {
+        p.innerHTML = `₹${yearly ? p.dataset.y : p.dataset.m}<small> /month</small>`;
+        p.nextElementSibling.textContent = yearly ? p.nextElementSibling.dataset.yNote : "";
+      });
+    }),
+  );
+
+  const form = document.getElementById("waitlist");
+  // "Book a demo" and plan buttons pre-fill the form.
+  document.querySelectorAll("[data-call]").forEach((a) => a.addEventListener("click", () => (form.wants_call.checked = true)));
+  document.querySelectorAll("[data-plan]").forEach((a) => a.addEventListener("click", () => (form.plan.value = a.dataset.plan)));
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const msg = form.querySelector(".msg");
+    const show = (kind, text) => { msg.className = `msg ${kind}`; msg.textContent = text; };
+    const data = Object.fromEntries(new FormData(form));
+    if (!data.name.trim() || !/^\S+@\S+\.\S+$/.test(data.email)) return show("err", "Add your name and a valid email.");
+    const button = form.querySelector("button[type=submit]");
+    button.disabled = true;
+    try {
+      const res = await fetch(`${SUPABASE_URL}/rest/v1/waitlist`, {
+        method: "POST",
+        headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}`, "Content-Type": "application/json", Prefer: "return=minimal" },
+        body: JSON.stringify({
+          name: data.name.trim(), email: data.email.trim().toLowerCase(), website: data.website || null,
+          category: data.category || null, phone: data.phone || null, wants_call: form.wants_call.checked, plan: data.plan || null,
+        }),
+      });
+      if (res.status === 409) return show("ok", "You're already on the list. We'll be in touch soon!");
+      if (!res.ok) throw new Error(await res.text());
+      form.reset();
+      show("ok", data.wants_call ? "You're in! We'll message you within a day to set up your demo." : "You're on the list! We'll email you when your spot opens.");
+    } catch (err) {
+      console.error(err);
+      show("err", "Something went wrong. Please try again in a minute.");
+    } finally {
+      button.disabled = false;
+    }
+  });
+</script>
+</body>
+</html>
