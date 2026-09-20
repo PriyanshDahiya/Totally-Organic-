@@ -141,7 +141,13 @@ function cleanLines(lines: string[]) {
   return lines.map((s) => s.replace(EMOJI, "").replace(/\s+/g, " ").trim()).filter(Boolean);
 }
 
+// The prompt bans these; a draft that still uses one gets rewritten.
+const MARKETING =
+  /\b(journey|game[- ]?chang\w*|level up|unlock\w*|elevate|hustle|grind|seamless|effortless\w*|transform\w*|empower\w*|revolutionar\w*|cutting[- ]edge|struggle is real|say goodbye to|look no further|in today's world|elevate your|supercharge|unleash)\b/i;
+
 function checkLimits(remix: Remix, format: Format): string | null {
+  const marketing = remix.lines.join(" ").match(MARKETING);
+  if (marketing) return `"${marketing[0]}" is ad language. Write the moment instead, in plain words.`;
   const l = LIMITS[format];
   const lines = cleanLines(remix.lines);
   if (lines.length < l.minLines || lines.length > l.maxLines)
@@ -170,6 +176,16 @@ const JudgeSchema = z.object({
   ),
   best: z.number().describe("Number of the best draft"),
 });
+
+// What good looks like. Real formats that perform on Reels, written as
+// moments; the model copies the shape, not the words.
+const EXAMPLES = `Examples of the standard to hit (different brands, don't copy the words):
+- "when you try to skip a workout but something's still asking if you actually did it"
+- "POV: you told yourself you'd post one Reel a day. it's day 4. you've posted zero Reels and three stories of your packaging"
+- "mummy: beta business kaisa chal raha hai / me: product toh mast hai / mummy: toh log kharid kyun nahi rahe"
+- "kiss marry kill: the ₹45k agency quote, the tool that writes it for you, another 2am brainstorm"
+- "agency: ₹45,000 for 12 Reels / me: that's 6 months of my ad budget / agency: they'll be very aesthetic / me: my customers are on the metro, bhai"
+Notice: a time, a place, someone talking, a number. Never a summary of the problem.`;
 
 function formatBrief(input: RemixInput) {
   const { hook } = input;
@@ -219,6 +235,8 @@ Pain point: ${angle.pain_point}
 ${"benefit" in angle && angle.benefit ? `What the product changes: ${angle.benefit}\n` : ""}
 Trending post to remix (keep its structure):
 """${hook.text}"""
+
+${EXAMPLES}
 
 Format: ${formatBrief(input)}
 ${languageRule(input.language, input.culture)}${voiceBlock(input)}
