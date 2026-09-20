@@ -2,6 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { generateObject } from "./llm";
 import { memeById } from "./memes";
+import { exampleHooks } from "./hook-examples";
 import type { BrandProfile } from "./brand-profile";
 import type { Culture } from "./voice";
 import type { Moment } from "./moments";
@@ -160,9 +161,9 @@ function checkLimits(remix: Remix, format: Format): string | null {
 }
 
 // Drafts per card: the judge picks the best, which beats taking the first
-// thing the model writes. Three keeps a card at ~4-6 calls on Groq's
-// free tier (30 requests a minute).
-const DRAFTS = 3;
+// thing the model writes. Two, plus a second batch when the first is weak,
+// keeps a card affordable (Groq's free tier allows 200k tokens a day).
+const DRAFTS = 2;
 
 const JudgeSchema = z.object({
   scores: z.array(
@@ -177,15 +178,10 @@ const JudgeSchema = z.object({
   best: z.number().describe("Number of the best draft"),
 });
 
-// What good looks like. Real formats that perform on Reels, written as
-// moments; the model copies the shape, not the words.
-const EXAMPLES = `Examples of the standard to hit (different brands, don't copy the words):
-- "when you try to skip a workout but something's still asking if you actually did it"
-- "POV: you told yourself you'd post one Reel a day. it's day 4. you've posted zero Reels and three stories of your packaging"
-- "mummy: beta business kaisa chal raha hai / me: product toh mast hai / mummy: toh log kharid kyun nahi rahe"
-- "kiss marry kill: the ₹45k agency quote, the tool that writes it for you, another 2am brainstorm"
-- "agency: ₹45,000 for 12 Reels / me: that's 6 months of my ad budget / agency: they'll be very aesthetic / me: my customers are on the metro, bhai"
-Notice: a time, a place, someone talking, a number. Never a summary of the problem.`;
+// Out of 20 (four criteria, 5 each). Below this the batch isn't worth
+// showing, so the card is written again from scratch.
+const GOOD_ENOUGH = 13;
+const MAX_ROUNDS = 2;
 
 function formatBrief(input: RemixInput) {
   const { hook } = input;
@@ -215,6 +211,7 @@ async function draft(input: RemixInput, prompt: string): Promise<Remix | null> {
     const remix = await generateObject({ name: "hook_remix", schema: RemixSchema, system: SYSTEM_PROMPT, prompt: prompt + feedback });
     const problem = checkLimits(remix, input.hook.format);
     if (!problem) return { ...remix, lines: cleanLines(remix.lines) };
+    console.log(`hook_remix rejected (${input.hook.format}): ${problem}`);
     feedback = `
 
 Your previous attempt broke a length rule: ${problem} Rewrite it shorter.`;
@@ -223,7 +220,7 @@ Your previous attempt broke a length rule: ${problem} Rewrite it shorter.`;
 }
 
 export async function remixHook(input: RemixInput): Promise<Remix> {
-  const { brand, angle, hook, product } = input;
+  const { brand, angle, hook, product, mentionBrand } = input;
   const prompt = `Brand: ${brand.name} — ${brand.one_liner} (${brand.category})
 Tone do's:
 ${brand.tone_dos.map((t) => `- ${t}`).join("\n")}
@@ -233,23 +230,49 @@ ${product ? `\nProduct shown in the post: ${product.name}${product.price ? ` (${
 Angle: ${angle.title}
 Pain point: ${angle.pain_point}
 ${"benefit" in angle && angle.benefit ? `What the product changes: ${angle.benefit}\n` : ""}
-Trending post to remix (keep its structure):
+Trending post to remix. Keep its exact shape (same rhythm, same number of beats, same punchline position) and swap its subject for this brand's world. Don't reuse its words beyond the pattern words ("POV:", "when", "tell me"):
 """${hook.text}"""
 
-${EXAMPLES}
+Examples of the standard to hit (other brands; copy the shape, never the words):
+${exampleHooks(hook.format === "green_screen" ? (mentionBrand ? "branded" : "meme") : mentionBrand ? "story" : "meme")}
+Notice what they have: a time, a place, a number, or someone talking. Never a summary of the problem.
 
 Format: ${formatBrief(input)}
 ${languageRule(input.language, input.culture)}${voiceBlock(input)}
 ${styleBrief(input)}`;
 
-  const drafts = (await Promise.all(Array.from({ length: DRAFTS }, () => draft(input, prompt).catch(() => null)))).filter(
-    (d): d is Remix => d !== null,
-  );
-  if (drafts.length === 0) throw new Error("The AI couldn't write this post. Try regenerating.");
-  if (drafts.length === 1) return drafts[0];
+  // Write a batch, judge it, and if the best of it still isn't good enough,
+  // write one more batch and take the best overall.
+  let bestSoFar: { remix: Remix; total: number } | null = null;
+  for (let round = 0; round < MAX_ROUNDS; round++) {
+    const drafts = (
+      await Promise.all(
+        Array.from({ length: DRAFTS }, () =>
+          draft(input, prompt).catch((err) => {
+            console.error("hook_remix draft failed:", err instanceof Error ? err.message : err);
+            return null;
+          }),
+        ),
+      )
+    ).filter(
+      (d): d is Remix => d !== null,
+    );
+    if (drafts.length === 0) continue;
+    const judged = drafts.length === 1 ? null : await judge(input, drafts).catch(() => null);
+    const picked = judged ? (drafts[judged.best - 1] ?? drafts[0]) : drafts[0];
+    const score = judged?.scores.find((sc) => sc.n === judged.best);
+    const total = score ? score.lived_moment + score.funny + score.product_link + score.clean : GOOD_ENOUGH;
+    if (!bestSoFar || total > bestSoFar.total) bestSoFar = { remix: picked, total };
+    if (total >= GOOD_ENOUGH) break;
+    console.log(`hook_judge: best draft scored ${total}/20, writing another batch`);
+  }
+  if (!bestSoFar) throw new Error("The AI couldn't write this post. Try regenerating.");
+  return bestSoFar.remix;
+}
 
-  // The judge sees only the on-screen text (and the meme picked), like a viewer would.
-  const judged = await generateObject({
+// Scores the drafts the way a viewer would see them: on-screen text only.
+async function judge({ brand, angle, hook }: RemixInput, drafts: Remix[]) {
+  return generateObject({
     name: "hook_judge",
     schema: JudgeSchema,
     system:
@@ -260,9 +283,7 @@ Angle: ${angle.pain_point}
 ${drafts
   .map((d, i) => `Draft ${i + 1}:\n${d.lines.join("\n")}${hook.format === "green_screen" ? `\n[meme: ${memeLabel(d.meme_id)}]` : ""}`)
   .join("\n\n")}`,
-  }).catch(() => null);
-  const best = judged ? drafts[judged.best - 1] : null;
-  return best ?? drafts[0];
+  });
 }
 
 function memeLabel(id: number) {

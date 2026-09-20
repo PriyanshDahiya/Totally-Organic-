@@ -72,9 +72,34 @@ def frames(path, vf=None, count=None, ss=None, limit=None):
         shutil.rmtree(tmp, ignore_errors=True)
 
 
-def bbox(path, w, h, duration):
+def green_fraction(frame):
+    """Share of the frame that is key-colour green."""
+    return float((alpha_of(frame) < 0.5).mean())
+
+
+def usable_span(path, duration):
+    """Start and end seconds of the real meme, skipping intro/outro frames
+    that have no green in them at all (black title cards, hard cuts). Those
+    frames also carry the loud blip some clips open with."""
+    step = 0.1
+    times = [round(t, 2) for t in np.arange(0, duration, step)]
+    green = []
+    for t in times:
+        f = next(frames(path, count=1, ss=t), None)
+        green.append(0.0 if f is None else green_fraction(f))
+    ok = [i for i, g in enumerate(green) if g > 0.25]
+    if not ok:
+        return 0.0, duration
+    start, end = times[ok[0]], min(duration, times[ok[-1]] + step)
+    # Don't trim more than half the clip away on a false reading.
+    if end - start < duration * 0.5:
+        return 0.0, duration
+    return start, end
+
+
+def bbox(path, w, h, duration, start=0.0):
     mask = np.zeros((h, w), bool)
-    for t in np.linspace(0.05, max(duration - 0.1, 0.1), 8):
+    for t in np.linspace(start + 0.05, max(start + duration - 0.1, start + 0.1), 8):
         for f in frames(path, count=1, ss=round(float(t), 2)):
             mask |= alpha_of(f) > 0.6
     ys, xs = np.nonzero(mask)
@@ -87,12 +112,43 @@ def bbox(path, w, h, duration):
     return x0, y0, (x1 - x0) // 2 * 2, (y1 - y0) // 2 * 2
 
 
+def clean_audio(src, start, dur, out_wav):
+    """The clip's audio, trimmed to the same span as the video and faded in
+    and out, so a cut can't leave the click/blip some clips start with.
+    Returns None when the clip has no audio."""
+    import wave
+    raw = out_wav + ".raw.wav"
+    r = subprocess.run([FF, "-loglevel", "error", "-y", "-ss", str(start), "-t", str(dur), "-i", src,
+                        "-vn", "-ac", "2", "-ar", "48000", raw], capture_output=True)
+    if r.returncode != 0 or not os.path.exists(raw):
+        return None
+    with wave.open(raw) as w:
+        params = w.getparams()
+        a = np.frombuffer(w.readframes(w.getnframes()), np.int16).astype(np.float32).reshape(-1, params.nchannels)
+    os.remove(raw)
+    if len(a) == 0:
+        return None
+    fade_in, fade_out = int(0.06 * 48000), int(0.08 * 48000)
+    a[:fade_in] *= np.linspace(0, 1, min(fade_in, len(a)))[:, None][: len(a)]
+    if len(a) > fade_out:
+        a[-fade_out:] *= np.linspace(1, 0, fade_out)[:, None]
+    with wave.open(out_wav, "w") as w:
+        w.setparams(params)
+        w.writeframes(a.astype(np.int16).tobytes())
+    return out_wav
+
+
 def process(src, dst_dir, meme):
     base = os.path.splitext(meme["file"])[0]
     w, h = probe_size(src)
-    dur = min(float(meme["duration_s"]), MAX_SECONDS)
+    full = float(meme["duration_s"])
     keyed = bool(meme.get("green_screen", True))
-    x, y, cw, ch = bbox(src, w, h, dur) if keyed else (0, 0, w // 2 * 2, h // 2 * 2)
+    # Skip a black intro or outro: it isn't green, so it would widen the crop
+    # box to the whole frame and leave the meme tiny, and it's where the
+    # high-pitched blip sits.
+    start, end = usable_span(src, full) if keyed else (0.0, full)
+    dur = min(end - start, MAX_SECONDS)
+    x, y, cw, ch = bbox(src, w, h, dur, start) if keyed else (0, 0, w // 2 * 2, h // 2 * 2)
     scale = min(1.0, MAX_W / cw)
     ow, oh = int(cw * scale) // 2 * 2, int(ch * scale) // 2 * 2
     vf = f"crop={cw}:{ch}:{x}:{y},scale={ow}:{oh}"
@@ -103,17 +159,20 @@ def process(src, dst_dir, meme):
     tmp = tempfile.mkdtemp(prefix="keyed-")
     poster = None
     n = 0
-    for f in frames(src, vf=vf, limit=MAX_SECONDS):
+    for f in frames(src, vf=vf, ss=start or None, limit=dur):
         img = np.dstack([despill(f), (alpha_of(f) * 255).astype(np.uint8)]) if keyed else f
         Image.fromarray(img).save(os.path.join(tmp, f"k{n:05d}.png"), compress_level=1)
         if n == int(FPS * min(1.0, dur / 2)):
             poster = img
         n += 1
-    enc = [FF, "-loglevel", "error", "-y", "-framerate", str(FPS), "-i", os.path.join(tmp, "k%05d.png"),
-           "-i", src, "-map", "0:v", "-map", "1:a?", "-shortest", "-t", str(MAX_SECONDS)]
+    audio = clean_audio(src, start, dur, os.path.join(tmp, "audio.wav"))
+    enc = [FF, "-loglevel", "error", "-y", "-framerate", str(FPS), "-i", os.path.join(tmp, "k%05d.png")]
+    enc += ["-i", audio, "-map", "0:v", "-map", "1:a"] if audio else ["-map", "0:v"]
+    enc += ["-shortest", "-t", str(dur)]
     enc += (["-c:v", "libvpx-vp9", "-pix_fmt", "yuva420p", "-auto-alt-ref", "0", "-b:v", "0", "-crf", "34",
-             "-c:a", "libopus", "-b:a", "96k"] if keyed else
-            ["-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "24", "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart"])
+             *(["-c:a", "libopus", "-b:a", "96k"] if audio else [])] if keyed else
+            ["-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "24", *(["-c:a", "aac", "-b:a", "128k"] if audio else []),
+             "-movflags", "+faststart"])
     subprocess.run(enc + [out], check=True)
     shutil.rmtree(tmp, ignore_errors=True)
     if poster is not None:

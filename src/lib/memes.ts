@@ -33,11 +33,15 @@ function autoPool(live?: Map<number, number>) {
 }
 
 // The menu the model picks from: memes worth using, best first, minus the
-// ones used recently.
+// ones used recently. Only the best-scoring ones: the whole library would be a third of the
+// prompt, and the model never reaches past the top of the list anyway.
+const MENU_SIZE = 30;
+
 export function memeMenu(exclude: Set<number> = new Set(), live?: Map<number, number>) {
   const known = autoPool(live).sort((a, b) => memeScore(b, live) - memeScore(a, live));
   const pool = known.filter((m) => !exclude.has(m.id));
   return (pool.length ? pool : known)
+    .slice(0, MENU_SIZE)
     .map((m) => {
       const used = live?.get(m.id);
       return `${m.id}. ${m.name}${m.quote ? ` (says ${m.quote})` : ""}: ${m.mood}; use when ${m.useWhen}; popularity ${

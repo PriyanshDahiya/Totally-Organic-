@@ -33,25 +33,22 @@ const HooksSchema = z.object({
       source: z.number().describe("Number of the Reel the pattern came from"),
       hook: z
         .string()
-        .describe("The hook itself, written exactly as it would appear on screen, as one concrete example. Not an instruction and no blanks."),
+        .describe("The Reel's own hook, copied verbatim from the caption (hashtags, emojis and mentions removed). Never a description or an instruction."),
       format: z.enum(["wall_of_text", "slideshow"]).describe("slideshow for list/ranking/'things that' formats, else wall_of_text"),
     }),
   ),
 });
 
-const SYSTEM_PROMPT = `You study trending Instagram Reels and extract their hook patterns so small brands can remix them.
+const SYSTEM_PROMPT = `You collect the hooks of trending Instagram Reels so small brands can remix them.
 
-For each Reel you get its caption and view count. The first line of a caption is usually the on-screen hook. Pick the Reels whose hook is a reusable pattern (a POV, a contrast, a list, a confession, a "tell me without telling me", a relatable complaint) and write the pattern as ONE concrete, general example that any brand could remix.
+You get captions of Reels with their view counts. The first line or two of a caption is usually the text on screen: the hook. Your job is to COPY that hook exactly as written, not to describe or improve it.
 
-Rules:
-- Write the hook itself, as the on-screen text a viewer would read. Never describe it or give instructions ("Ask your audience...", "Share a...", "List...").
-- Fill in every slot with a concrete example; no blanks like ___ or <placeholders>.
-- Rewrite in your own words; keep the structure, not the creator's exact sentence.
-- Skip engagement bait ("comment X", "tag a friend", "follow for more") and tutorials that only work as step-by-step instructions.
-- Hindi only in Latin letters (Hinglish), never Devanagari.
-- Skip giveaways, promotions, product ads, news, anything political, religious or about specific real people.
-- Skip hooks that only work with that creator's video.
-- Keep Hinglish if the original is Hinglish.`;
+- Copy the hook verbatim, including its punctuation, slang and line breaks. Fix only obvious typos, and drop hashtags, @mentions, emojis and any "follow for more" tail.
+- Keep at most the first two lines: the setup, and the turn if there is one.
+- Skip a Reel when its caption has no real hook (just hashtags, a product pitch, a description of the video, or a caption that only makes sense with that creator's footage).
+- Skip engagement bait ("comment X", "tag a friend", "follow for more"), giveaways, ads, news, anything political or religious, and anything about a named real person.
+- Keep Hinglish as written, in Latin letters, never Devanagari.
+- Pick the Reels whose hooks are structures another brand could reuse: a POV, a contrast, a list, a confession, a "tell me without telling me", an overheard line, a relatable complaint.`;
 
 // The model sometimes returns an instruction, a template or bait instead of
 // a hook despite the prompt; those make useless cards, so drop them.
