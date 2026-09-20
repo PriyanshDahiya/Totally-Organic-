@@ -3,6 +3,7 @@ import { createAdminClient } from "./supabase/admin";
 import { remixHook, type Format, type Remix } from "./hooks";
 import { findBackgroundClip, findBackgroundPhoto, type StockClip } from "./stock";
 import { memeById, memeMenu, pickPopularMeme, toMemeLayer } from "./memes";
+import { liveMemeScores } from "./meme-trends";
 import { pickMusic } from "./music";
 import { generateScenes } from "./scenes";
 import { suggestAudio } from "./audio";
@@ -256,6 +257,9 @@ export async function generateCard(brandId: string, opts: { format?: Format } = 
   if (jobError) throw jobError;
 
   try {
+    // Live meme scores (empty before the first scan) steer the picks.
+    const liveScores = format === "green_screen" ? await liveMemeScores().catch(() => undefined) : undefined;
+
     // Meme cards name the brand in most setups ("when your team is [brand]"),
     // since a funny post nobody links to the brand doesn't sell.
     const mentionBrand = Math.random() < (format === "green_screen" ? MEME_MENTION_ODDS : MENTION_ODDS[brand.mention_frequency as keyof typeof MENTION_ODDS]);
@@ -279,7 +283,10 @@ export async function generateCard(brandId: string, opts: { format?: Format } = 
       // Memes used in recent cards are left out so the feed doesn't repeat.
       memeMenu:
         format === "green_screen"
-          ? memeMenu(new Set((recent ?? []).flatMap((r) => ((r.style as CardStyle | null)?.meme ? [(r.style as CardStyle).meme!.id] : []))))
+          ? memeMenu(
+              new Set((recent ?? []).flatMap((r) => ((r.style as CardStyle | null)?.meme ? [(r.style as CardStyle).meme!.id] : []))),
+              liveScores,
+            )
           : undefined,
     });
 
@@ -317,7 +324,7 @@ export async function generateCard(brandId: string, opts: { format?: Format } = 
 
     if (format === "green_screen") {
       // The model's pick, or a random meme if it named one we don't have.
-      style.meme = toMemeLayer(memeById(remix.meme_id) ?? pickPopularMeme());
+      style.meme = toMemeLayer(memeById(remix.meme_id) ?? pickPopularMeme(liveScores));
       // The model's scene for this joke, else one of the brand's scenes.
       // "empty" nudges Pexels toward scenes without people; the alt-text
       // filter in findBackgroundPhoto drops any that still have them.

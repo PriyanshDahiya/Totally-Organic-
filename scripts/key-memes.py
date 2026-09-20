@@ -19,6 +19,8 @@ from PIL import Image
 FF = os.path.join("node_modules", "@remotion", "compositor-win32-x64-msvc", "ffmpeg.exe")
 FPS = 30
 MAX_W = 720  # plenty for a cut-out that covers at most ~60% of a 1080 frame
+# Reels only need the payoff; the composition loops anything shorter.
+MAX_SECONDS = 8
 
 
 def probe_size(path):
@@ -44,7 +46,7 @@ def despill(rgb):
     return rgb.clip(0, 255).astype(np.uint8)
 
 
-def frames(path, vf=None, count=None, ss=None):
+def frames(path, vf=None, count=None, ss=None, limit=None):
     """Decoded RGB frames via a temporary PNG sequence (the bundled ffmpeg
     can't pipe raw video)."""
     import glob
@@ -60,6 +62,8 @@ def frames(path, vf=None, count=None, ss=None):
             args += ["-vf", vf]
         if count:
             args += ["-frames:v", str(count)]
+        if limit:
+            args += ["-t", str(limit)]
         args += ["-r", str(FPS), os.path.join(tmp, "f%05d.png")]
         subprocess.run(args, check=True)
         for f in sorted(glob.glob(os.path.join(tmp, "*.png"))):
@@ -86,7 +90,7 @@ def bbox(path, w, h, duration):
 def process(src, dst_dir, meme):
     base = os.path.splitext(meme["file"])[0]
     w, h = probe_size(src)
-    dur = float(meme["duration_s"])
+    dur = min(float(meme["duration_s"]), MAX_SECONDS)
     keyed = bool(meme.get("green_screen", True))
     x, y, cw, ch = bbox(src, w, h, dur) if keyed else (0, 0, w // 2 * 2, h // 2 * 2)
     scale = min(1.0, MAX_W / cw)
@@ -99,14 +103,14 @@ def process(src, dst_dir, meme):
     tmp = tempfile.mkdtemp(prefix="keyed-")
     poster = None
     n = 0
-    for f in frames(src, vf=vf):
+    for f in frames(src, vf=vf, limit=MAX_SECONDS):
         img = np.dstack([despill(f), (alpha_of(f) * 255).astype(np.uint8)]) if keyed else f
         Image.fromarray(img).save(os.path.join(tmp, f"k{n:05d}.png"), compress_level=1)
         if n == int(FPS * min(1.0, dur / 2)):
             poster = img
         n += 1
     enc = [FF, "-loglevel", "error", "-y", "-framerate", str(FPS), "-i", os.path.join(tmp, "k%05d.png"),
-           "-i", src, "-map", "0:v", "-map", "1:a?", "-shortest"]
+           "-i", src, "-map", "0:v", "-map", "1:a?", "-shortest", "-t", str(MAX_SECONDS)]
     enc += (["-c:v", "libvpx-vp9", "-pix_fmt", "yuva420p", "-auto-alt-ref", "0", "-b:v", "0", "-crf", "34",
              "-c:a", "libopus", "-b:a", "96k"] if keyed else
             ["-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "24", "-c:a", "aac", "-b:a", "128k", "-movflags", "+faststart"])
